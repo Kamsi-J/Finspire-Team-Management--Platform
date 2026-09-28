@@ -1,0 +1,20 @@
+# env files — never commit real credentials
+.env
+.env.local
+.env*.local
+
+# Next.js
+.next/
+out/
+build/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Vercel
+.vercel
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #FAFAF9;
+  --surface: #FFFFFF;
+  --border: #E5E3DF;
+  --text: #1C1917;
+  --text-2: #57534E;
+  --text-3: #A8A29E;
+  --brand: #E85D04;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+@layer utilities {
+  .font-display { font-family: var(--font-syne), system-ui, sans-serif; }
+  .font-mono-code { font-family: var(--font-jetbrains), monospace; }
+}
