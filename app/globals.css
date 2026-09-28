@@ -3,21 +3,55 @@
 @tailwind utilities;
 
 :root {
-  --bg: #FAFAF9;
-  --surface: #FFFFFF;
-  --border: #E5E3DF;
-  --text: #1C1917;
-  --text-2: #57534E;
-  --text-3: #A8A29E;
-  --brand: #E85D04;
+  --brand: #701428;
+  --brand-dark: #5a0f20;
+  --brand-light: #f5eaec;
+  --gold: #C4960A;
+  --charcoal: #1C1C1E;
+  --charcoal-2: #232326;
+  --charcoal-3: #2c2c2f;
+  --canvas: #F4F4F5;
+  --card: #FFFFFF;
+  --neutral: #71717A;
+  --text: #18181B;
+  --text-2: #52525B;
+  --text-3: #A1A1AA;
+  --border: #E4E4E7;
 }
 
 body {
-  background: var(--bg);
+  background: var(--canvas);
   color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }
 
 @layer utilities {
-  .font-display { font-family: var(--font-syne), system-ui, sans-serif; }
+  .font-display { font-family: var(--font-lora), Georgia, serif; }
   .font-mono-code { font-family: var(--font-jetbrains), monospace; }
+
+  .text-brand { color: var(--brand); }
+  .bg-brand { background-color: var(--brand); }
+  .border-brand { border-color: var(--brand); }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--charcoal-3) transparent;
+  }
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-fade-in {
+    animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
-import { Inter, Syne, JetBrains_Mono } from 'next/font/google'
+import { Lora, Hanken_Grotesk, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
-const syne = Syne({ subsets: ['latin'], variable: '--font-syne' })
+const lora = Lora({ subsets: ['latin'], variable: '--font-lora' })
+const hanken = Hanken_Grotesk({ subsets: ['latin'], variable: '--font-hanken' })
 const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' })
 
 export const metadata: Metadata = {
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${syne.variable} ${jetbrains.variable} font-sans`}>
+      <body className={`${lora.variable} ${hanken.variable} ${jetbrains.variable} font-sans`}>
         {children}
       </body>
     </html>

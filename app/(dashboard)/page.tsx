@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,55 +21,72 @@ export default async function OverviewPage() {
     .order('created_at', { ascending: false })
     .limit(8)
 
-  const stats = [
-    { label: 'Total Tasks', value: totalTasks ?? 0, color: 'text-stone-900' },
-    { label: 'Completed', value: doneTasks ?? 0, color: 'text-green-600' },
-    { label: 'Overdue', value: overdueTasks ?? 0, color: 'text-red-600' },
-    { label: 'Team Members', value: activeMembers ?? 0, color: 'text-blue-600' },
-  ]
-
   return (
-    <div className="p-8">
+    <div className="p-8 max-w-5xl">
+      {/* Header */}
       <div className="mb-8">
-        <h1 className="font-display font-bold text-2xl text-stone-900">Overview</h1>
-        <p className="text-stone-500 text-sm mt-1">Your team at a glance</p>
+        <p className="text-[11px] font-mono-code uppercase tracking-widest mb-2" style={{ color: 'var(--neutral)' }}>
+          Dashboard
+        </p>
+        <h1 className="font-display text-[28px] font-bold leading-tight" style={{ color: 'var(--text)', letterSpacing: '-0.02em' }}>
+          Overview
+        </h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>Your team at a glance</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map((s) => (
-          <div key={s.label} className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <p className="text-xs text-stone-400 font-medium uppercase tracking-wide mb-2">{s.label}</p>
-            <p className={`font-display font-bold text-3xl ${s.color}`}>{s.value}</p>
-          </div>
-        ))}
+        <StatCard label="Total Tasks" value={totalTasks ?? 0} />
+        <StatCard label="Completed" value={doneTasks ?? 0} accent="green" />
+        <StatCard label="Overdue" value={overdueTasks ?? 0} accent="overdue" />
+        <StatCard label="Team Members" value={activeMembers ?? 0} />
       </div>
 
       {/* Recent tasks */}
-      <div className="bg-white border border-stone-200 rounded-xl shadow-sm">
-        <div className="px-6 py-4 border-b border-stone-100 flex justify-between items-center">
-          <h2 className="font-display font-bold text-base text-stone-900">Recent Tasks</h2>
-          <a href="/tasks" className="text-xs text-brand font-semibold hover:underline">View all →</a>
+      <div
+        className="rounded-xl overflow-hidden"
+        style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+      >
+        <div
+          className="px-6 py-4 flex justify-between items-center"
+          style={{ borderBottom: '1px solid var(--border)' }}
+        >
+          <h2 className="font-display text-base font-bold" style={{ color: 'var(--text)' }}>Recent Tasks</h2>
+          <a
+            href="/tasks"
+            className="text-xs font-semibold transition-opacity hover:opacity-70"
+            style={{ color: 'var(--brand)', fontFamily: 'var(--font-hanken)' }}
+          >
+            View all →
+          </a>
         </div>
-        <div className="divide-y divide-stone-100">
+        <div>
           {(recentTasks ?? []).map((task: any) => (
-            <div key={task.id} className="px-6 py-3.5 flex items-center justify-between gap-4">
+            <div
+              key={task.id}
+              className="px-6 py-4 flex items-center justify-between gap-4"
+              style={{ borderBottom: '1px solid var(--border)' }}
+            >
               <div className="min-w-0">
-                <p className="text-sm font-medium text-stone-800 truncate">{task.title}</p>
-                <p className="text-xs text-stone-400 mt-0.5">
+                <div className="flex items-center gap-2">
+                  {task.priority === 'urgent' && (
+                    <span className="text-[10px] font-mono-code font-semibold tracking-wider" style={{ color: 'var(--brand)' }}>
+                      URGENT
+                    </span>
+                  )}
+                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>{task.title}</p>
+                </div>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-3)' }}>
                   {task.team_members?.name ?? 'Unassigned'} · Due {task.due_date}
                 </p>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {task.priority === 'urgent' && (
-                  <span className="text-xs bg-red-50 text-red-600 border border-red-200 px-2 py-0.5 rounded-full font-medium">Urgent</span>
-                )}
-                <StatusBadge status={task.status} />
-              </div>
+              <StatusChip status={task.status} />
             </div>
           ))}
           {!recentTasks?.length && (
-            <div className="px-6 py-8 text-center text-stone-400 text-sm">No tasks yet. Create your first task.</div>
+            <div className="px-6 py-10 text-center text-sm" style={{ color: 'var(--text-3)' }}>
+              No tasks yet. <a href="/tasks" style={{ color: 'var(--brand)' }}>Create your first task →</a>
+            </div>
           )}
         </div>
       </div>
@@ -77,22 +94,47 @@ export default async function OverviewPage() {
   )
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    pending: 'bg-stone-100 text-stone-500 border-stone-200',
-    in_progress: 'bg-blue-50 text-blue-600 border-blue-200',
-    done: 'bg-green-50 text-green-600 border-green-200',
-    overdue: 'bg-red-50 text-red-600 border-red-200',
-  }
-  const labels: Record<string, string> = {
-    pending: 'Pending',
-    in_progress: 'In progress',
-    done: 'Done',
-    overdue: 'Overdue',
-  }
+function StatCard({ label, value, accent }: { label: string; value: number; accent?: 'green' | 'overdue' }) {
+  const isOverdue = accent === 'overdue'
+  const isGreen = accent === 'green'
+
   return (
-    <span className={`text-xs border px-2 py-0.5 rounded-full font-medium ${styles[status] ?? styles.pending}`}>
-      {labels[status] ?? status}
+    <div
+      className="rounded-xl p-5 relative overflow-hidden"
+      style={{
+        background: 'var(--card)',
+        border: '1px solid var(--border)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        borderLeft: isOverdue ? '3px solid var(--brand)' : undefined,
+      }}
+    >
+      <p className="text-[11px] uppercase tracking-widest font-semibold mb-3" style={{ color: 'var(--neutral)' }}>
+        {label}
+      </p>
+      <p
+        className="font-mono-code text-3xl font-bold leading-none"
+        style={{ color: isOverdue ? 'var(--brand)' : isGreen ? '#16a34a' : 'var(--text)' }}
+      >
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function StatusChip({ status }: { status: string }) {
+  const config: Record<string, { label: string; bg: string; color: string }> = {
+    pending:     { label: 'Pending',     bg: '#F4F4F5', color: '#71717A' },
+    in_progress: { label: 'In progress', bg: '#EFF6FF', color: '#2563EB' },
+    done:        { label: 'Done',        bg: '#F0FDF4', color: '#16A34A' },
+    overdue:     { label: 'Overdue',     bg: '#FFF1F2', color: '#701428' },
+  }
+  const c = config[status] ?? config.pending
+  return (
+    <span
+      className="text-[11px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0"
+      style={{ background: c.bg, color: c.color }}
+    >
+      {c.label}
     </span>
   )
 }

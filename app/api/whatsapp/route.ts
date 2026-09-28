@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyWebhook, parseInboundWebhook, sendTextMessage, sendListMessage } from '@/lib/whatsapp'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
 // GET — webhook verification (Meta calls this once when you set up the webhook)
 export async function GET(req: NextRequest) {

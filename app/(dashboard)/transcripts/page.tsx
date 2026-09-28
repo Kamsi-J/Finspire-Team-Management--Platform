@@ -29,9 +29,7 @@ export default function TranscriptsPage() {
     e.preventDefault()
     setSaving(true)
     const { data } = await supabase.from('transcripts').insert({
-      meeting_title: form.meeting_title,
-      content: form.content,
-      status: 'uploaded',
+      meeting_title: form.meeting_title, content: form.content, status: 'uploaded',
     }).select().single()
     setForm({ meeting_title: '', content: '' })
     setShowForm(false)
@@ -77,100 +75,118 @@ export default function TranscriptsPage() {
     fetchData()
   }
 
-  const statusColor: Record<string, string> = {
-    uploaded: 'bg-stone-100 text-stone-500',
-    processing: 'bg-blue-50 text-blue-600',
-    reviewed: 'bg-amber-50 text-amber-600',
-    applied: 'bg-green-50 text-green-600',
+  const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
+    uploaded:   { label: 'Uploaded',   bg: '#F4F4F5', color: '#71717A' },
+    processing: { label: 'Processing', bg: '#EFF6FF', color: '#2563EB' },
+    reviewed:   { label: 'Reviewed',   bg: '#FFFBEB', color: '#B45309' },
+    applied:    { label: 'Applied',    bg: '#F0FDF4', color: '#16A34A' },
   }
+
+  const inputStyle = { border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)' }
 
   return (
     <div className="p-8">
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="font-display font-bold text-2xl text-stone-900">Transcripts</h1>
-          <p className="text-stone-500 text-sm mt-1">Upload meeting transcripts — AI extracts and assigns tasks automatically</p>
+          <p className="text-[11px] font-mono-code uppercase tracking-widest mb-2" style={{ color: 'var(--neutral)' }}>AI</p>
+          <h1 className="font-display font-bold text-[28px] leading-tight" style={{ color: 'var(--text)', letterSpacing: '-0.02em' }}>Transcripts</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>Upload a meeting transcript — AI extracts and assigns tasks</p>
         </div>
         <button onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-semibold hover:bg-brand-dark transition-colors">
+          className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          style={{ background: 'var(--brand)' }}>
           + Upload Transcript
         </button>
       </div>
 
       {showForm && (
-        <form onSubmit={uploadTranscript} className="bg-white border border-stone-200 rounded-xl p-6 mb-6 shadow-sm">
-          <h3 className="font-display font-bold text-base text-stone-900 mb-4">Upload Meeting Transcript</h3>
-          <div className="space-y-4">
+        <div className="rounded-xl p-6 mb-6 animate-fade-in"
+          style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <h3 className="font-display font-bold text-base mb-5" style={{ color: 'var(--text)' }}>Upload Meeting Transcript</h3>
+          <form onSubmit={uploadTranscript} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1.5 uppercase tracking-wide">Meeting Title</label>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Meeting Title</label>
               <input value={form.meeting_title} onChange={(e) => setForm({ ...form, meeting_title: e.target.value })}
-                className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none" style={inputStyle}
                 placeholder="e.g. Team Sync — Sept 13" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1.5 uppercase tracking-wide">Transcript *</label>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Transcript *</label>
               <textarea required value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={10}
-                className="w-full px-3 py-2.5 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none font-mono-code text-xs"
+                className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none resize-none font-mono-code"
+                style={{ ...inputStyle, fontSize: '12px' }}
                 placeholder="Paste the meeting transcript here. The AI will extract tasks and match them to team members by name…" />
             </div>
-          </div>
-          <div className="flex justify-end gap-3 mt-4">
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-stone-600">Cancel</button>
-            <button type="submit" disabled={saving} className="px-5 py-2 bg-brand text-white rounded-lg text-sm font-semibold disabled:opacity-50">
-              {saving ? 'Uploading…' : 'Upload & Parse'}
-            </button>
-          </div>
-        </form>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setShowForm(false)}
+                className="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-70 transition-opacity" style={{ color: 'var(--text-2)' }}>Cancel</button>
+              <button type="submit" disabled={saving}
+                className="px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
+                style={{ background: 'var(--brand)' }}>
+                {saving ? 'Uploading…' : 'Upload & Parse'}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
 
       {/* Review modal */}
       {reviewing && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-5 border-b border-stone-100">
-              <h2 className="font-display font-bold text-lg text-stone-900">Review Extracted Tasks</h2>
-              <p className="text-sm text-stone-500 mt-0.5">Edit anything before applying — then click Apply to create these tasks.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            style={{ background: 'var(--card)', boxShadow: '0 20px 40px rgba(0,0,0,0.15)' }}>
+            <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--border)' }}>
+              <h2 className="font-display font-bold text-lg" style={{ color: 'var(--text)' }}>Review Extracted Tasks</h2>
+              <p className="text-sm mt-0.5" style={{ color: 'var(--text-2)' }}>Edit before applying — then click Apply to create these tasks.</p>
             </div>
             <div className="p-6 space-y-4">
               {reviewTasks.map((task, i) => (
-                <div key={i} className="border border-stone-200 rounded-xl p-4">
+                <div key={i} className="rounded-xl p-4" style={{ border: '1px solid var(--border)' }}>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="col-span-2">
-                      <label className="block text-xs text-stone-400 mb-1 uppercase tracking-wide">Title</label>
-                      <input value={task.title} onChange={(e) => {
-                        const updated = [...reviewTasks]; updated[i] = { ...task, title: e.target.value }; setReviewTasks(updated)
-                      }} className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                      <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Title</label>
+                      <input value={task.title}
+                        onChange={(e) => { const u = [...reviewTasks]; u[i] = { ...task, title: e.target.value }; setReviewTasks(u) }}
+                        className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none" style={inputStyle} />
                     </div>
                     <div>
-                      <label className="block text-xs text-stone-400 mb-1 uppercase tracking-wide">Assign to</label>
-                      <select value={task.assignee_id ?? ''} onChange={(e) => {
-                        const updated = [...reviewTasks]; updated[i] = { ...task, assignee_id: e.target.value }; setReviewTasks(updated)
-                      }} className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-white">
+                      <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Assign to</label>
+                      <select value={task.assignee_id ?? ''}
+                        onChange={(e) => { const u = [...reviewTasks]; u[i] = { ...task, assignee_id: e.target.value }; setReviewTasks(u) }}
+                        className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none" style={inputStyle}>
                         <option value="">Unassigned</option>
                         {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs text-stone-400 mb-1 uppercase tracking-wide">Due Date</label>
-                      <input type="date" value={task.due_date ?? ''} onChange={(e) => {
-                        const updated = [...reviewTasks]; updated[i] = { ...task, due_date: e.target.value }; setReviewTasks(updated)
-                      }} className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                      <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Due Date</label>
+                      <input type="date" value={task.due_date ?? ''}
+                        onChange={(e) => { const u = [...reviewTasks]; u[i] = { ...task, due_date: e.target.value }; setReviewTasks(u) }}
+                        className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none" style={inputStyle} />
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-3">
-                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${task.confidence === 'high' ? 'bg-green-50 text-green-600' : task.confidence === 'medium' ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded uppercase tracking-wide"
+                      style={{
+                        background: task.confidence === 'high' ? '#F0FDF4' : task.confidence === 'medium' ? '#FFFBEB' : '#FFF1F2',
+                        color: task.confidence === 'high' ? '#16A34A' : task.confidence === 'medium' ? '#B45309' : 'var(--brand)',
+                      }}>
                       {task.confidence} confidence
                     </span>
                     <button onClick={() => setReviewTasks(reviewTasks.filter((_, j) => j !== i))}
-                      className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                      className="text-xs font-medium hover:opacity-70 transition-opacity" style={{ color: 'var(--brand)' }}>
+                      Remove
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="px-6 py-4 border-t border-stone-100 flex justify-end gap-3">
-              <button onClick={() => setReviewing(null)} className="px-4 py-2 text-sm text-stone-600">Cancel</button>
+            <div className="px-6 py-4 flex justify-end gap-3" style={{ borderTop: '1px solid var(--border)' }}>
+              <button onClick={() => setReviewing(null)}
+                className="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-70 transition-opacity" style={{ color: 'var(--text-2)' }}>Cancel</button>
               <button onClick={applyTasks} disabled={applying || reviewTasks.length === 0}
-                className="px-5 py-2 bg-brand text-white rounded-lg text-sm font-semibold disabled:opacity-50">
+                className="px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
+                style={{ background: 'var(--brand)' }}>
                 {applying ? 'Applying…' : `Apply ${reviewTasks.length} tasks`}
               </button>
             </div>
@@ -180,35 +196,45 @@ export default function TranscriptsPage() {
 
       <div className="space-y-3">
         {transcripts.length === 0 && (
-          <div className="bg-white border border-stone-200 rounded-xl p-8 text-center text-stone-400 text-sm">No transcripts yet.</div>
-        )}
-        {transcripts.map((t) => (
-          <div key={t.id} className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm flex items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <p className="font-semibold text-stone-800">{t.meeting_title ?? 'Untitled meeting'}</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${statusColor[t.status]}`}>{t.status}</span>
-              </div>
-              <p className="text-xs text-stone-400">
-                {new Date(t.created_at).toLocaleDateString()} · {t.ai_extracted_tasks?.length ?? 0} tasks extracted
-              </p>
-            </div>
-            <div className="flex gap-2 flex-shrink-0">
-              {t.status === 'uploaded' && (
-                <button onClick={() => parseTranscript(t.id)} disabled={parsing === t.id}
-                  className="px-3 py-1.5 border border-stone-200 rounded-lg text-xs font-semibold text-stone-600 hover:bg-stone-50 disabled:opacity-50">
-                  {parsing === t.id ? 'Parsing…' : '🧠 Parse'}
-                </button>
-              )}
-              {t.status === 'reviewed' && (
-                <button onClick={() => openReview(t)}
-                  className="px-3 py-1.5 bg-brand text-white rounded-lg text-xs font-semibold hover:bg-brand-dark">
-                  Review & Apply →
-                </button>
-              )}
-            </div>
+          <div className="rounded-xl p-10 text-center text-sm"
+            style={{ background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text-3)' }}>
+            No transcripts yet.
           </div>
-        ))}
+        )}
+        {transcripts.map((t) => {
+          const s = statusConfig[t.status] ?? statusConfig.uploaded
+          return (
+            <div key={t.id} className="rounded-xl p-5 flex items-center justify-between gap-4"
+              style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>{t.meeting_title ?? 'Untitled meeting'}</p>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize"
+                    style={{ background: s.bg, color: s.color }}>{s.label}</span>
+                </div>
+                <p className="text-xs" style={{ color: 'var(--text-3)' }}>
+                  {new Date(t.created_at).toLocaleDateString()} · {t.ai_extracted_tasks?.length ?? 0} tasks extracted
+                </p>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                {t.status === 'uploaded' && (
+                  <button onClick={() => parseTranscript(t.id)} disabled={parsing === t.id}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 transition-opacity"
+                    style={{ border: '1px solid var(--border)', color: 'var(--text-2)' }}>
+                    {parsing === t.id ? 'Parsing…' : 'Parse with AI'}
+                  </button>
+                )}
+                {t.status === 'reviewed' && (
+                  <button onClick={() => openReview(t)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                    style={{ background: 'var(--brand)' }}>
+                    Review & Apply →
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

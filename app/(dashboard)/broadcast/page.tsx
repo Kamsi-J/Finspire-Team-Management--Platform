@@ -9,9 +9,7 @@ export default function BroadcastPage() {
   const [history, setHistory] = useState<Broadcast[]>([])
   const [memberCount, setMemberCount] = useState(0)
 
-  useEffect(() => {
-    fetchData()
-  }, [])
+  useEffect(() => { fetchData() }, [])
 
   async function fetchData() {
     const [{ data: broadcasts }, { count }] = await Promise.all([
@@ -26,17 +24,12 @@ export default function BroadcastPage() {
     e.preventDefault()
     if (!message.trim()) return
     setSending(true)
-
     const res = await fetch('/api/broadcast', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message }),
     })
-
-    if (res.ok) {
-      setMessage('')
-      fetchData()
-    }
+    if (res.ok) { setMessage(''); fetchData() }
     setSending(false)
   }
 
@@ -45,49 +38,58 @@ export default function BroadcastPage() {
 
   return (
     <div className="p-8">
-      <div className="mb-6">
-        <h1 className="font-display font-bold text-2xl text-stone-900">Broadcast</h1>
-        <p className="text-stone-500 text-sm mt-1">Send a message to all {memberCount} active team members via WhatsApp</p>
+      <div className="mb-8">
+        <p className="text-[11px] font-mono-code uppercase tracking-widest mb-2" style={{ color: 'var(--neutral)' }}>Communications</p>
+        <h1 className="font-display font-bold text-[28px] leading-tight" style={{ color: 'var(--text)', letterSpacing: '-0.02em' }}>Broadcast</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>Send a message to all {memberCount} active members via WhatsApp</p>
       </div>
 
-      <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm mb-6">
+      <div className="rounded-xl p-6 mb-8"
+        style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
         <form onSubmit={sendBroadcast}>
-          <label className="block text-xs font-medium text-stone-600 mb-2 uppercase tracking-wide">Message</label>
+          <label className="block text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--neutral)' }}>
+            Message
+          </label>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value.slice(0, charLimit))}
             rows={5}
             required
-            className="w-full px-3 py-3 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-            placeholder="Type your message here. It will be sent to everyone on the team via WhatsApp…"
+            className="w-full px-3 py-3 rounded-lg text-sm focus:outline-none resize-none"
+            style={{ border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)' }}
+            placeholder="Type your message. It will be sent to everyone on the team via WhatsApp…"
           />
           <div className="flex justify-between items-center mt-3">
-            <span className={`text-xs font-mono-code ${chars > charLimit * 0.9 ? 'text-amber-500' : 'text-stone-400'}`}>
+            <span
+              className="text-xs font-mono-code"
+              style={{ color: chars > charLimit * 0.9 ? 'var(--brand)' : 'var(--text-3)' }}
+            >
               {chars}/{charLimit}
             </span>
             <button
               type="submit"
               disabled={sending || !message.trim()}
-              className="px-5 py-2 bg-brand text-white rounded-lg text-sm font-semibold hover:bg-brand-dark disabled:opacity-50 transition-colors"
+              className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity hover:opacity-90"
+              style={{ background: 'var(--brand)' }}
             >
-              {sending ? 'Sending…' : `📲 Send to ${memberCount} members`}
+              {sending ? 'Sending…' : `Send to ${memberCount} members`}
             </button>
           </div>
         </form>
       </div>
 
-      {/* History */}
       <div>
-        <h2 className="font-display font-bold text-base text-stone-900 mb-3">Recent Broadcasts</h2>
+        <h2 className="font-display font-bold text-base mb-4" style={{ color: 'var(--text)' }}>Recent Broadcasts</h2>
         <div className="space-y-2">
           {history.length === 0 && (
-            <p className="text-sm text-stone-400">No broadcasts sent yet.</p>
+            <p className="text-sm" style={{ color: 'var(--text-3)' }}>No broadcasts sent yet.</p>
           )}
           {history.map((b) => (
-            <div key={b.id} className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm">
-              <p className="text-sm text-stone-700 whitespace-pre-wrap">{b.message}</p>
-              <p className="text-xs text-stone-400 mt-2">
-                Sent to {b.recipient_count} members · {new Date(b.sent_at).toLocaleString()}
+            <div key={b.id} className="rounded-xl p-4"
+              style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+              <p className="text-sm whitespace-pre-wrap mb-2" style={{ color: 'var(--text)' }}>{b.message}</p>
+              <p className="text-[11px] font-mono-code" style={{ color: 'var(--text-3)' }}>
+                {b.recipient_count} recipients · {new Date(b.sent_at).toLocaleString()}
               </p>
             </div>
           ))}
