@@ -59,13 +59,22 @@ async function sendDailyTaskBoards() {
       (t) => t.status !== 'overdue' && t.due_date > in24hStr
     )
 
-    const taskBoard = buildTaskBoardText(member.name, active, dueSoon, overdue)
+    const activeText = active.length > 0
+      ? active.map((t) => `• ${t.title} — due ${t.due_date}`).join('\n')
+      : '• —'
+    const dueSoonText = dueSoon.length > 0
+      ? dueSoon.map((t) => `• ${t.title} — due ${t.due_date}`).join('\n')
+      : '• —'
+    const overdueText = overdue.length > 0
+      ? overdue.map((t) => `• ${t.title} — was due ${t.due_date}`).join('\n')
+      : '• —'
 
-    // Send via approved template with dynamic task board in {{2}}
     await sendWaTemplate(member.whatsapp_number, 'task_update', [
       { type: 'body', parameters: [
         { type: 'text', text: member.name },
-        { type: 'text', text: taskBoard },
+        { type: 'text', text: activeText },
+        { type: 'text', text: dueSoonText },
+        { type: 'text', text: overdueText },
       ]},
     ])
   }
