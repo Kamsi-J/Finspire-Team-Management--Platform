@@ -84,32 +84,47 @@ export async function sendTemplateMessage(
 // High-level message builders
 // ---------------------------------------------------------------
 
+export function buildTaskBoardText(
+  memberName: string,
+  activeTasks: { title: string; due_date: string }[],
+  dueSoonTasks: { title: string; due_date: string }[],
+  overdueTasks: { title: string; due_date: string }[]
+): string {
+  const lines: string[] = [`Hi ${memberName}, here's your task board:`, '']
+
+  if (activeTasks.length > 0) {
+    lines.push(`🟢 *YOUR TASKS*`)
+    activeTasks.forEach((t) => lines.push(`• ${t.title} — due ${t.due_date}`))
+    lines.push('')
+  }
+
+  if (dueSoonTasks.length > 0) {
+    lines.push(`⏰ *DUE SOON (within 24hrs)*`)
+    dueSoonTasks.forEach((t) => lines.push(`• ${t.title} — due ${t.due_date}`))
+    lines.push('')
+  }
+
+  if (overdueTasks.length > 0) {
+    lines.push(`🔴 *OVERDUE*`)
+    overdueTasks.forEach((t) => lines.push(`• ${t.title} — was due ${t.due_date}`))
+    lines.push('')
+  }
+
+  if (activeTasks.length === 0 && dueSoonTasks.length === 0 && overdueTasks.length === 0) {
+    return `Hi ${memberName}, you have no open tasks right now. ✅ Great work!`
+  }
+
+  lines.push(`Tap below to manage your tasks.`)
+  return lines.join('\n')
+}
+
+// kept for backwards compat — use buildTaskBoardText for new sends
 export function buildWeeklyDigestText(
   memberName: string,
   overdueTasks: { title: string; due_date: string }[],
   dueTasks: { title: string; due_date: string }[]
 ): string {
-  const lines: string[] = [`Good morning ${memberName} 👋`, '']
-
-  if (overdueTasks.length > 0) {
-    lines.push(`🔴 *Overdue (${overdueTasks.length})*`)
-    overdueTasks.forEach((t) => lines.push(`• ${t.title} — was due ${t.due_date}`))
-    lines.push('')
-  }
-
-  if (dueTasks.length > 0) {
-    lines.push(`📌 *Due this week (${dueTasks.length})*`)
-    dueTasks.forEach((t) => lines.push(`• ${t.title} — due ${t.due_date}`))
-    lines.push('')
-  }
-
-  if (overdueTasks.length === 0 && dueTasks.length === 0) {
-    lines.push(`✅ You have no pending tasks this week. Great work!`)
-    return lines.join('\n')
-  }
-
-  lines.push(`Reply to this message to update your task status.`)
-  return lines.join('\n')
+  return buildTaskBoardText(memberName, dueTasks, [], overdueTasks)
 }
 
 export function buildOverdueAlertText(memberName: string, taskTitle: string, dueDate: string): string {

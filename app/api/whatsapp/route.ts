@@ -40,9 +40,18 @@ export async function POST(req: NextRequest) {
 
   // Handle button/list replies
   if (msg.type === 'interactive') {
-    // "mark_done" button — show their open tasks as a list
-    if (msg.buttonReplyId === 'mark_done') {
+    const btnId = msg.buttonReplyId?.toLowerCase() ?? ''
+    const btnTitle = msg.buttonReplyTitle?.toLowerCase() ?? ''
+
+    // "mark_done" button (interactive or template)
+    if (btnId === 'mark_done' || btnTitle.includes('mark') || btnTitle.includes('done')) {
       await handleMarkDoneRequest(msg.from, member?.id)
+      return NextResponse.json({ status: 'ok' })
+    }
+
+    // "view_tasks" / "view & update tasks" button (interactive or template)
+    if (btnId === 'view_tasks' || btnTitle.includes('view') || btnTitle.includes('task')) {
+      await handleViewTasks(msg.from, member?.id)
       return NextResponse.json({ status: 'ok' })
     }
 
@@ -50,12 +59,6 @@ export async function POST(req: NextRequest) {
     if (msg.listReplyId?.startsWith('task_')) {
       const taskId = msg.listReplyId.replace('task_', '')
       await handleTaskCompletion(msg.from, taskId, member?.id)
-      return NextResponse.json({ status: 'ok' })
-    }
-
-    // "view_tasks" button
-    if (msg.buttonReplyId === 'view_tasks') {
-      await handleViewTasks(msg.from, member?.id)
       return NextResponse.json({ status: 'ok' })
     }
   }

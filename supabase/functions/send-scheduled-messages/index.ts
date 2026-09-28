@@ -1,5 +1,5 @@
 // Supabase Edge Function — runs on schedule via pg_cron
-// Handles: Monday digests, daily reminders, overdue alerts, Friday performance digest
+// Types: daily_task_board | weekly_digest | performance_report
 // Deploy with: supabase functions deploy send-scheduled-messages
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -13,10 +13,9 @@ const WA_TOKEN = Deno.env.get('WHATSAPP_ACCESS_TOKEN')!
 const WA_PHONE_ID = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')!
 
 Deno.serve(async (req) => {
-  const { type } = await req.json().catch(() => ({ type: 'daily' }))
+  const { type } = await req.json().catch(() => ({ type: 'daily_task_board' }))
 
-  if (type === 'weekly_digest') await sendWeeklyDigests()
-  else if (type === 'daily_reminders') await sendDailyReminders()
+  if (type === 'daily_task_board') await sendDailyTaskBoards()
   else if (type === 'performance_report') await sendPerformanceReport()
 
   return new Response(JSON.stringify({ ok: true }), {
@@ -25,9 +24,10 @@ Deno.serve(async (req) => {
 })
 
 // ---------------------------------------------------------------
-// Monday: Send each member their tasks for the week
+// Daily (9am): Send each member their 3-section task board
+// Active tasks | Due soon (24hrs) | Overdue
 // ---------------------------------------------------------------
-async function sendWeeklyDigests() {
+async function sendDailyTaskBoards() {
   const { data: members } = await supabase
     .from('team_members')
     .select('*')
@@ -36,80 +36,43 @@ async function sendWeeklyDigests() {
 
   if (!members) return
 
-  const today = new Date()
-  const weekEnd = new Date(today)
-  weekEnd.setDate(today.getDate() + 7)
+  const now = new Date()
+  const todayStr = now.toISOString().split('T')[0]
+  const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+  const in24hStr = in24h.toISOString().split('T')[0]
 
   for (const member of members) {
-    const { data: overdue } = await supabase
+    const { data: tasks } = await supabase
       .from('tasks')
-      .select('title, due_date')
+      .select('title, due_date, status')
       .eq('assignee_id', member.id)
-      .eq('status', 'overdue')
+      .in('status', ['pending', 'in_progress', 'overdue'])
+      .order('due_date', { ascending: true })
 
-    const { data: upcoming } = await supabase
-      .from('tasks')
-      .select('title, due_date')
-      .eq('assignee_id', member.id)
-      .in('status', ['pending', 'in_progress'])
-      .lte('due_date', weekEnd.toISOString().split('T')[0])
-      .gte('due_date', today.toISOString().split('T')[0])
+    if (!tasks || tasks.length === 0) continue
 
-    const overdueList = overdue ?? []
-    const upcomingList = upcoming ?? []
+    const overdue = tasks.filter((t) => t.status === 'overdue' || t.due_date < todayStr)
+    const dueSoon = tasks.filter(
+      (t) => t.status !== 'overdue' && t.due_date >= todayStr && t.due_date <= in24hStr
+    )
+    const active = tasks.filter(
+      (t) => t.status !== 'overdue' && t.due_date > in24hStr
+    )
 
-    if (overdueList.length === 0 && upcomingList.length === 0) continue
+    const taskBoard = buildTaskBoardText(member.name, active, dueSoon, overdue)
 
-    const text = buildDigestText(member.name, overdueList, upcomingList)
-    await sendWaButtonMessage(member.whatsapp_number, text, [
-      { id: 'mark_done', title: '✓ Mark a task done' },
-      { id: 'view_tasks', title: '📋 View all tasks' },
+    // Send via approved template with dynamic task board in {{2}}
+    await sendWaTemplate(member.whatsapp_number, 'task_update', [
+      { type: 'body', parameters: [
+        { type: 'text', text: member.name },
+        { type: 'text', text: taskBoard },
+      ]},
     ])
   }
 }
 
 // ---------------------------------------------------------------
-// Daily: Reminders for tasks due today + overdue alerts
-// ---------------------------------------------------------------
-async function sendDailyReminders() {
-  const today = new Date().toISOString().split('T')[0]
-
-  // Tasks due today — send a reminder
-  const { data: dueToday } = await supabase
-    .from('tasks')
-    .select('id, title, assignee_id, team_members(name, whatsapp_number)')
-    .eq('due_date', today)
-    .in('status', ['pending', 'in_progress'])
-    .eq('reminder_sent_day_of', false)
-
-  for (const task of dueToday ?? []) {
-    const member = (task as any).team_members
-    if (!member) continue
-    const text = `📅 Hi ${member.name}, just a reminder — *"${task.title}"* is due *today*.\n\nLet us know once it's done! 💪`
-    await sendWaButtonMessage(member.whatsapp_number, text, [
-      { id: 'mark_done', title: '✓ Mark as done' },
-    ])
-    await supabase.from('tasks').update({ reminder_sent_day_of: true }).eq('id', task.id)
-  }
-
-  // Overdue tasks — send alert once
-  const { data: overdueTasks } = await supabase
-    .from('tasks')
-    .select('id, title, due_date, assignee_id, team_members(name, whatsapp_number)')
-    .eq('status', 'overdue')
-    .eq('reminder_sent_overdue', false)
-
-  for (const task of overdueTasks ?? []) {
-    const member = (task as any).team_members
-    if (!member) continue
-    const text = `⚠️ Hi ${member.name}, *"${task.title}"* was due on ${task.due_date} and is now overdue.\n\nPlease update its status or flag a blocker to your manager.`
-    await sendWaText(member.whatsapp_number, text)
-    await supabase.from('tasks').update({ reminder_sent_overdue: true }).eq('id', task.id)
-  }
-}
-
-// ---------------------------------------------------------------
-// Friday: Weekly performance digest to admins
+// Friday (5pm): Weekly performance digest to admins (Kamsi) only
 // ---------------------------------------------------------------
 async function sendPerformanceReport() {
   const weekStart = new Date()
@@ -124,7 +87,7 @@ async function sendPerformanceReport() {
 
   const { data: admins } = await supabase
     .from('team_members')
-    .select('whatsapp_number, name')
+    .select('whatsapp_number')
     .eq('is_admin', true)
     .eq('is_active', true)
 
@@ -132,36 +95,19 @@ async function sendPerformanceReport() {
 
   const stats = []
   for (const m of members) {
-    const { count: completed } = await supabase
-      .from('tasks')
-      .select('*', { count: 'exact', head: true })
-      .eq('assignee_id', m.id)
-      .eq('status', 'done')
-      .gte('completed_at', weekStartStr)
-
-    const { count: overdue } = await supabase
-      .from('tasks')
-      .select('*', { count: 'exact', head: true })
-      .eq('assignee_id', m.id)
-      .eq('status', 'overdue')
-
-    const { count: total } = await supabase
-      .from('tasks')
-      .select('*', { count: 'exact', head: true })
-      .eq('assignee_id', m.id)
-      .in('status', ['done', 'overdue', 'pending', 'in_progress'])
-
-    stats.push({
-      name: m.name,
-      completed: completed ?? 0,
-      overdue: overdue ?? 0,
-      total: total ?? 0,
-    })
+    const [{ count: completed }, { count: overdue }, { count: total }] = await Promise.all([
+      supabase.from('tasks').select('*', { count: 'exact', head: true })
+        .eq('assignee_id', m.id).eq('status', 'done').gte('completed_at', weekStartStr),
+      supabase.from('tasks').select('*', { count: 'exact', head: true })
+        .eq('assignee_id', m.id).eq('status', 'overdue'),
+      supabase.from('tasks').select('*', { count: 'exact', head: true })
+        .eq('assignee_id', m.id).in('status', ['done', 'overdue', 'pending', 'in_progress']),
+    ])
+    stats.push({ name: m.name, completed: completed ?? 0, overdue: overdue ?? 0, total: total ?? 0 })
   }
 
   const weekLabel = `Week of ${weekStartStr}`
-  const lines = [`📊 *Weekly Performance Report*`, `_${weekLabel}_`, ``]
-
+  const lines = [`📊 *Finspire Weekly Report*`, `_${weekLabel}_`, ``]
   stats.forEach((s) => {
     const rate = s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0
     const emoji = rate >= 80 ? '🟢' : rate >= 50 ? '🟡' : '🔴'
@@ -175,50 +121,67 @@ async function sendPerformanceReport() {
 }
 
 // ---------------------------------------------------------------
-// Helpers
+// Message builder — 3-section task board
 // ---------------------------------------------------------------
-
-function buildDigestText(
-  name: string,
-  overdue: { title: string; due_date: string }[],
-  upcoming: { title: string; due_date: string }[]
+function buildTaskBoardText(
+  memberName: string,
+  active: { title: string; due_date: string }[],
+  dueSoon: { title: string; due_date: string }[],
+  overdue: { title: string; due_date: string }[]
 ): string {
-  const lines = [`Good morning ${name} 👋`, ``]
+  const lines: string[] = []
+
+  if (active.length > 0) {
+    lines.push(`🟢 YOUR TASKS`)
+    active.forEach((t) => lines.push(`• ${t.title} — due ${t.due_date}`))
+    lines.push('')
+  }
+
+  if (dueSoon.length > 0) {
+    lines.push(`⏰ DUE SOON (within 24hrs)`)
+    dueSoon.forEach((t) => lines.push(`• ${t.title} — due ${t.due_date}`))
+    lines.push('')
+  }
+
   if (overdue.length > 0) {
-    lines.push(`🔴 *Overdue (${overdue.length})*`)
+    lines.push(`🔴 OVERDUE`)
     overdue.forEach((t) => lines.push(`• ${t.title} — was due ${t.due_date}`))
-    lines.push(``)
+    lines.push('')
   }
-  if (upcoming.length > 0) {
-    lines.push(`📌 *Due this week (${upcoming.length})*`)
-    upcoming.forEach((t) => lines.push(`• ${t.title} — due ${t.due_date}`))
-    lines.push(``)
-  }
-  lines.push(`Reply to update your task status.`)
+
+  lines.push(`Tap below to manage your tasks.`)
   return lines.join('\n')
 }
 
-async function sendWaText(to: string, text: string) {
-  await fetch(`https://graph.facebook.com/v19.0/${WA_PHONE_ID}/messages`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: text } }),
+// ---------------------------------------------------------------
+// WhatsApp API helpers
+// ---------------------------------------------------------------
+
+async function sendWaTemplate(to: string, templateName: string, components: object[]) {
+  await waPost({
+    messaging_product: 'whatsapp',
+    to,
+    type: 'template',
+    template: {
+      name: templateName,
+      language: { code: 'en' },
+      components,
+    },
   })
 }
 
-async function sendWaButtonMessage(to: string, body: string, buttons: { id: string; title: string }[]) {
-  await fetch(`https://graph.facebook.com/v19.0/${WA_PHONE_ID}/messages`, {
+async function sendWaText(to: string, text: string) {
+  await waPost({ messaging_product: 'whatsapp', to, type: 'text', text: { body: text } })
+}
+
+async function waPost(body: object) {
+  const res = await fetch(`https://graph.facebook.com/v19.0/${WA_PHONE_ID}/messages`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      to,
-      type: 'interactive',
-      interactive: {
-        type: 'button',
-        body: { text: body },
-        action: { buttons: buttons.map((b) => ({ type: 'reply', reply: { id: b.id, title: b.title } })) },
-      },
-    }),
+    body: JSON.stringify(body),
   })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    console.error('[WA Error]', err)
+  }
 }
