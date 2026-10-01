@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase'
 import type { TeamMember } from '@/types'
 
 type LoginForm = { memberId: string; email: string; password: string }
+type DeleteTarget = { memberId: string; name: string; email?: string }
+type OpenMenu = string | null
 
 export default function MembersPage() {
   const [members, setMembers] = useState<TeamMember[]>([])
@@ -13,8 +15,18 @@ export default function MembersPage() {
   const [loginForm, setLoginForm] = useState<LoginForm | null>(null)
   const [loginSaving, setLoginSaving] = useState(false)
   const [loginError, setLoginError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [openMenu, setOpenMenu] = useState<OpenMenu>(null)
 
   useEffect(() => { fetchMembers() }, [])
+  useEffect(() => {
+    function closeMenu(e: MouseEvent) {
+      if (!(e.target as HTMLElement).closest('[data-member-menu]')) setOpenMenu(null)
+    }
+    document.addEventListener('mousedown', closeMenu)
+    return () => document.removeEventListener('mousedown', closeMenu)
+  }, [])
 
   async function fetchMembers() {
     const { data } = await supabase.from('team_members').select('*').order('name')
@@ -52,6 +64,22 @@ export default function MembersPage() {
     setLoginForm(null)
     setLoginSaving(false)
     fetchMembers()
+  }
+
+  async function deleteMember() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const res = await fetch('/api/members/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memberId: deleteTarget.memberId, email: deleteTarget.email }),
+    })
+    const data = await res.json()
+    setDeleting(false)
+    if (!data.error) {
+      setDeleteTarget(null)
+      fetchMembers()
+    }
   }
 
   const inputStyle = { border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)' }
@@ -153,7 +181,7 @@ export default function MembersPage() {
         </div>
       )}
 
-      {/* Create Login Modal */}
+      {/* Create / Update Login Modal */}
       {loginForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="w-full max-w-sm rounded-xl p-6" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
@@ -199,8 +227,39 @@ export default function MembersPage() {
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="w-full max-w-sm rounded-xl p-6" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+            <h3 className="font-display font-bold text-base mb-1" style={{ color: 'var(--text)' }}>Remove {deleteTarget.name}?</h3>
+            <p className="text-xs mb-5" style={{ color: 'var(--text-3)' }}>
+              This will permanently delete their record from the team.
+              {deleteTarget.email && ' Their portal login will also be revoked.'}
+              {' '}This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-70 transition-opacity"
+                style={{ color: 'var(--text-2)' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteMember}
+                disabled={deleting}
+                className="px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
+                style={{ background: '#DC2626' }}
+              >
+                {deleting ? 'Removing…' : 'Remove Member'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
-        className="rounded-xl overflow-hidden"
+        className="rounded-xl"
         style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
       >
         {members.length === 0 && (
@@ -210,7 +269,10 @@ export default function MembersPage() {
           <div
             key={m.id}
             className="px-5 py-4 flex items-center justify-between gap-4"
-            style={{ borderBottom: i < members.length - 1 ? '1px solid var(--border)' : 'none' }}
+            style={{
+              borderBottom: i < members.length - 1 ? '1px solid var(--border)' : 'none',
+              borderRadius: i === 0 && members.length === 1 ? '12px' : i === 0 ? '12px 12px 0 0' : i === members.length - 1 ? '0 0 12px 12px' : undefined,
+            }}
           >
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <div
@@ -247,27 +309,55 @@ export default function MembersPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {!m.is_admin && (
-                <button
-                  onClick={() => { setLoginForm({ memberId: m.id, email: m.email ?? '', password: '' }); setLoginError('') }}
-                  className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-                  style={{ border: '1px solid var(--brand)', color: 'var(--brand)', background: 'var(--brand-light)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-                >
-                  {m.email ? 'Update Login' : 'Set Login'}
-                </button>
-              )}
+            <div className="relative flex-shrink-0" data-member-menu="">
               <button
-                onClick={() => toggleActive(m.id, m.is_active)}
-                className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-                style={{ border: '1px solid var(--border)', color: 'var(--text-2)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--canvas)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                onClick={() => setOpenMenu(openMenu === m.id ? null : m.id)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-lg leading-none transition-colors"
+                style={{
+                  color: 'var(--text-3)',
+                  background: openMenu === m.id ? 'var(--canvas)' : 'transparent',
+                  border: '1px solid ' + (openMenu === m.id ? 'var(--border)' : 'transparent'),
+                }}
               >
-                {m.is_active ? 'Deactivate' : 'Activate'}
+                ···
               </button>
+              {openMenu === m.id && (
+                <div
+                  className="absolute right-0 top-full mt-1 w-44 rounded-xl overflow-hidden z-30"
+                  style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
+                >
+                  {!m.is_admin && (
+                    <button
+                      onClick={() => { setOpenMenu(null); setLoginForm({ memberId: m.id, email: m.email ?? '', password: '' }); setLoginError('') }}
+                      className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+                      style={{ color: 'var(--text)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--canvas)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      {m.email ? 'Update Login' : 'Set Login'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setOpenMenu(null); toggleActive(m.id, m.is_active) }}
+                    className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+                    style={{ color: 'var(--text)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--canvas)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    {m.is_active ? 'Deactivate' : 'Activate'}
+                  </button>
+                  <div style={{ borderTop: '1px solid var(--border)' }} />
+                  <button
+                    onClick={() => { setOpenMenu(null); setDeleteTarget({ memberId: m.id, name: m.name, email: m.email ?? undefined }) }}
+                    className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+                    style={{ color: '#DC2626' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#FFF1F2' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    Remove member
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}
