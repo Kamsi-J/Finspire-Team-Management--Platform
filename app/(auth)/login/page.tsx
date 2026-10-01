@@ -20,7 +20,14 @@ export default function LoginPage() {
       setLoading(false)
       return
     }
-    router.push('/')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setLoading(false); return }
+    const { data: member } = await supabase
+      .from('team_members')
+      .select('is_admin')
+      .eq('email', user.email)
+      .single()
+    router.push(member?.is_admin !== false ? '/' : '/my-tasks')
   }
 
   return (
@@ -43,7 +50,7 @@ export default function LoginPage() {
           >
             Finspire Team OS
           </h1>
-          <p className="text-sm" style={{ color: 'var(--neutral)' }}>Admin access only</p>
+          <p className="text-sm" style={{ color: 'var(--neutral)' }}>Sign in to your workspace</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
