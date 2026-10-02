@@ -20,6 +20,16 @@ const FILTER_LABELS: Record<string, string> = {
   all: 'All', pending: 'Pending', in_progress: 'In Progress', overdue: 'Overdue', done: 'Done',
 }
 
+const STATUS_CONFIG = {
+  pending:     { label: 'Pending',     dot: '#F59E0B', pill: { background: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A' } as React.CSSProperties },
+  in_progress: { label: 'In Progress', dot: '#3B82F6', pill: { background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' } as React.CSSProperties },
+  done:        { label: 'Done',        dot: '#22C55E', pill: { background: '#F0FDF4', color: '#15803D', border: '1px solid #86EFAC' } as React.CSSProperties },
+  overdue:     { label: 'Overdue',     dot: '#EF4444', pill: { background: '#FFF1F2', color: '#BE123C', border: '1px solid #FECACA' } as React.CSSProperties },
+}
+function statusConfig(status: string) {
+  return STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.pending
+}
+
 export default function TasksPage() {
   const [tasks, setTasks] = useState<TaskRow[]>([])
   const [members, setMembers] = useState<TeamMember[]>([])
@@ -34,16 +44,19 @@ export default function TasksPage() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const [statusMenu, setStatusMenu] = useState<string | null>(null)
 
   // All tasks unfiltered (for counts)
   const [allTasks, setAllTasks] = useState<TaskRow[]>([])
 
   useEffect(() => {
-    function closeMenu(e: MouseEvent) {
-      if (!(e.target as HTMLElement).closest('[data-task-menu]')) setOpenMenu(null)
+    function closeMenus(e: MouseEvent) {
+      const t = e.target as HTMLElement
+      if (!t.closest('[data-task-menu]')) setOpenMenu(null)
+      if (!t.closest('[data-status-menu]')) setStatusMenu(null)
     }
-    document.addEventListener('mousedown', closeMenu)
-    return () => document.removeEventListener('mousedown', closeMenu)
+    document.addEventListener('mousedown', closeMenus)
+    return () => document.removeEventListener('mousedown', closeMenus)
   }, [])
 
   useEffect(() => { fetchData() }, [filter, assigneeFilter])
@@ -106,16 +119,18 @@ export default function TasksPage() {
   }
 
   async function updateStatus(id: string, status: string) {
+    setStatusMenu(null)
+    // optimistic update — color changes instantly
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t))
+    setAllTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t))
     await apiFetch('/api/tasks', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        id,
-        status,
+        id, status,
         ...(status === 'done' ? { completed_at: new Date().toISOString() } : { completed_at: null }),
       }),
     })
-    fetchData()
   }
 
   async function deleteTask() {
@@ -368,18 +383,52 @@ export default function TasksPage() {
               </p>
             </div>
 
-            {/* Status dropdown */}
-            <select
-              value={task.status}
-              onChange={(e) => updateStatus(task.id, e.target.value)}
-              className="text-xs px-2.5 py-1.5 rounded-lg font-semibold focus:outline-none cursor-pointer flex-shrink-0"
-              style={statusStyle(task.status)}
-            >
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
-              <option value="done">Done</option>
-              <option value="overdue">Overdue</option>
-            </select>
+            {/* Status pill */}
+            <div className="relative flex-shrink-0" data-status-menu="">
+              <button
+                onClick={() => setStatusMenu(statusMenu === task.id ? null : task.id)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold cursor-pointer"
+                style={{
+                  ...statusConfig(task.status).pill,
+                  transition: 'background 0.25s, color 0.25s, border-color 0.25s',
+                }}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  style={{ background: statusConfig(task.status).dot, transition: 'background 0.25s' }}
+                />
+                {statusConfig(task.status).label}
+                <span style={{ opacity: 0.5, fontSize: '9px', marginLeft: '1px' }}>▾</span>
+              </button>
+              {statusMenu === task.id && (
+                <div
+                  className="absolute right-0 top-full mt-1.5 w-38 rounded-xl overflow-hidden z-30"
+                  style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.14)', minWidth: '140px' }}
+                >
+                  {(['pending', 'in_progress', 'done', 'overdue'] as const).map((s) => {
+                    const cfg = statusConfig(s)
+                    const isActive = task.status === s
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => updateStatus(task.id, s)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium transition-colors"
+                        style={{
+                          background: isActive ? cfg.pill.background : 'transparent',
+                          color: isActive ? (cfg.pill as { color: string }).color : 'var(--text)',
+                        }}
+                        onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--canvas)' }}
+                        onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+                      >
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: cfg.dot }} />
+                        {cfg.label}
+                        {isActive && <span className="ml-auto" style={{ color: cfg.dot }}>✓</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Kebab menu */}
             <div className="relative flex-shrink-0" data-task-menu="">
@@ -428,12 +477,3 @@ export default function TasksPage() {
   )
 }
 
-function statusStyle(status: string): React.CSSProperties {
-  const s: Record<string, React.CSSProperties> = {
-    pending:     { background: '#F4F4F5', color: '#71717A', border: '1px solid #E4E4E7' },
-    in_progress: { background: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' },
-    done:        { background: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' },
-    overdue:     { background: '#FFF1F2', color: '#701428', border: '1px solid #FECDD3' },
-  }
-  return s[status] ?? s.pending
-}
