@@ -360,25 +360,24 @@ export default function TasksPage() {
             key={task.id}
             className="px-5 py-4 flex items-center gap-4"
             style={{
-              borderBottom: i < tasks.length - 1 ? '1px solid var(--border)' : 'none',
+              borderBottom: i < tasks.length - 1 ? `1px solid ${task.status === 'overdue' ? '#FECACA' : 'var(--border)'}` : 'none',
               borderRadius: tasks.length === 1 ? '12px' : i === 0 ? '12px 12px 0 0' : i === tasks.length - 1 ? '0 0 12px 12px' : undefined,
+              background: task.status === 'overdue' ? '#FFF1F2' : undefined,
+              transition: 'background 0.3s',
             }}
           >
             {/* Task info */}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                 {task.priority === 'urgent' && (
-                  <span className="text-[10px] font-mono-code font-bold tracking-widest" style={{ color: 'var(--brand)' }}>URGENT</span>
+                  <span className="text-[10px] font-mono-code font-bold tracking-widest" style={{ color: task.status === 'overdue' ? '#BE123C' : 'var(--brand)' }}>URGENT</span>
                 )}
-                {task.status === 'overdue' && (
-                  <span className="text-[10px] font-mono-code font-bold tracking-widest" style={{ color: '#DC2626' }}>OVERDUE</span>
-                )}
-                <p className="text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>{task.title}</p>
+                <p className="text-sm font-semibold truncate" style={{ color: task.status === 'overdue' ? '#BE123C' : 'var(--text)' }}>{task.title}</p>
               </div>
               {task.description && (
-                <p className="text-xs truncate mb-0.5" style={{ color: 'var(--text-3)' }}>{task.description}</p>
+                <p className="text-xs truncate mb-0.5" style={{ color: task.status === 'overdue' ? '#E57373' : 'var(--text-3)' }}>{task.description}</p>
               )}
-              <p className="text-xs" style={{ color: 'var(--text-3)' }}>
+              <p className="text-xs" style={{ color: task.status === 'overdue' ? '#E57373' : 'var(--text-3)' }}>
                 {(task as any).team_members?.name ?? 'Unassigned'} · Due {task.due_date}
               </p>
             </div>
@@ -408,7 +407,7 @@ export default function TasksPage() {
                   className="absolute right-0 top-full mt-1.5 w-38 rounded-xl overflow-hidden z-30"
                   style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.14)', minWidth: '140px' }}
                 >
-                  {(['pending', 'in_progress', 'done'] as const).map((s) => {
+                  {(['in_progress', 'done'] as const).map((s) => {
                     const cfg = statusConfig(s)
                     const isActive = task.status === s
                     return (
