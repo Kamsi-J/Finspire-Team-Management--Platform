@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { Task, TeamMember } from '@/types'
+import type { Task, TaskStatus, TeamMember } from '@/types'
 
 async function apiFetch(path: string, opts?: RequestInit) {
   const res = await fetch(path, opts)
@@ -118,7 +118,7 @@ export default function TasksPage() {
     fetchData()
   }
 
-  async function updateStatus(id: string, status: string) {
+  async function updateStatus(id: string, status: TaskStatus) {
     setStatusMenu(null)
     // optimistic update — color changes instantly
     setTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t))
