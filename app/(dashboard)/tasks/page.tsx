@@ -386,11 +386,12 @@ export default function TasksPage() {
             {/* Status pill */}
             <div className="relative flex-shrink-0" data-status-menu="">
               <button
-                onClick={() => setStatusMenu(statusMenu === task.id ? null : task.id)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold cursor-pointer"
+                onClick={() => task.status !== 'overdue' && setStatusMenu(statusMenu === task.id ? null : task.id)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold"
                 style={{
                   ...statusConfig(task.status).pill,
                   transition: 'background 0.25s, color 0.25s, border-color 0.25s',
+                  cursor: task.status === 'overdue' ? 'default' : 'pointer',
                 }}
               >
                 <span
@@ -398,14 +399,16 @@ export default function TasksPage() {
                   style={{ background: statusConfig(task.status).dot, transition: 'background 0.25s' }}
                 />
                 {statusConfig(task.status).label}
-                <span style={{ opacity: 0.5, fontSize: '9px', marginLeft: '1px' }}>▾</span>
+                {task.status !== 'overdue' && (
+                  <span style={{ opacity: 0.5, fontSize: '9px', marginLeft: '1px' }}>▾</span>
+                )}
               </button>
               {statusMenu === task.id && (
                 <div
                   className="absolute right-0 top-full mt-1.5 w-38 rounded-xl overflow-hidden z-30"
                   style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.14)', minWidth: '140px' }}
                 >
-                  {(['pending', 'in_progress', 'done', 'overdue'] as const).map((s) => {
+                  {(['pending', 'in_progress', 'done'] as const).map((s) => {
                     const cfg = statusConfig(s)
                     const isActive = task.status === s
                     return (
