@@ -368,6 +368,9 @@ export default function TasksPage() {
           >
             {/* Task info */}
             <div className="min-w-0 flex-1">
+              {task.status === 'overdue' && (
+                <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: '#BE123C', letterSpacing: '0.1em' }}>Overdue</p>
+              )}
               <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                 {task.priority === 'urgent' && (
                   <span className="text-[10px] font-mono-code font-bold tracking-widest" style={{ color: task.status === 'overdue' ? '#BE123C' : 'var(--brand)' }}>URGENT</span>
@@ -385,12 +388,11 @@ export default function TasksPage() {
             {/* Status pill */}
             <div className="relative flex-shrink-0" data-status-menu="">
               <button
-                onClick={() => task.status !== 'overdue' && setStatusMenu(statusMenu === task.id ? null : task.id)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold"
+                onClick={() => setStatusMenu(statusMenu === task.id ? null : task.id)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold cursor-pointer"
                 style={{
                   ...statusConfig(task.status).pill,
                   transition: 'background 0.25s, color 0.25s, border-color 0.25s',
-                  cursor: task.status === 'overdue' ? 'default' : 'pointer',
                 }}
               >
                 <span
@@ -398,9 +400,7 @@ export default function TasksPage() {
                   style={{ background: statusConfig(task.status).dot, transition: 'background 0.25s' }}
                 />
                 {statusConfig(task.status).label}
-                {task.status !== 'overdue' && (
-                  <span style={{ opacity: 0.5, fontSize: '9px', marginLeft: '1px' }}>▾</span>
-                )}
+                <span style={{ opacity: 0.5, fontSize: '9px', marginLeft: '1px' }}>▾</span>
               </button>
               {statusMenu === task.id && (
                 <div
