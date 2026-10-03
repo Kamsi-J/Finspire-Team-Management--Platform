@@ -6,7 +6,7 @@ export async function POST(req: Request) {
 
   if (email) {
     const { data: { users } } = await supabaseAdmin.auth.admin.listUsers()
-    const authUser = users.find((u) => u.email === email)
+    const authUser = (users as { id: string; email?: string }[]).find((u) => u.email === email)
     if (authUser) {
       await supabaseAdmin.auth.admin.deleteUser(authUser.id)
     }
