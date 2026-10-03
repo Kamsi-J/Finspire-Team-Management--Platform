@@ -101,9 +101,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--canvas)' }}>
 
-      {/* ── Desktop sidebar (md+) ── */}
+      {/* ── Desktop sidebar (lg+) ── */}
       <aside
-        className="hidden md:flex w-[220px] flex-shrink-0 flex-col scrollbar-thin"
+        className="hidden lg:flex w-[220px] flex-shrink-0 flex-col scrollbar-thin"
         style={{ background: 'var(--charcoal)' }}
       >
         <SidebarContent />
@@ -112,7 +112,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ── Mobile drawer backdrop ── */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 md:hidden"
+          className="fixed inset-0 z-40 lg:hidden"
           style={{ background: 'rgba(0,0,0,0.5)' }}
           onClick={() => setSidebarOpen(false)}
         />
@@ -120,7 +120,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* ── Mobile drawer ── */}
       <aside
-        className="fixed top-0 left-0 h-full w-[220px] flex flex-col z-50 md:hidden transition-transform duration-300 scrollbar-thin"
+        className="fixed top-0 left-0 h-full w-[220px] flex flex-col z-50 lg:hidden transition-transform duration-300 scrollbar-thin"
         style={{
           background: 'var(--charcoal)',
           transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
@@ -134,7 +134,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Mobile top bar */}
         <header
-          className="flex md:hidden items-center gap-3 px-4 h-14 flex-shrink-0"
+          className="flex lg:hidden items-center gap-3 px-4 h-14 flex-shrink-0"
           style={{ background: 'var(--charcoal)', borderBottom: '1px solid var(--charcoal-3)' }}
         >
           <button

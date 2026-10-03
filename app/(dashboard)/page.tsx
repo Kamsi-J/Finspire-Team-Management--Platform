@@ -22,7 +22,7 @@ export default async function OverviewPage() {
     .limit(8)
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-4 sm:p-8 max-w-5xl">
       {/* Header */}
       <div className="mb-8">
         <p className="text-[11px] font-mono-code uppercase tracking-widest mb-2" style={{ color: 'var(--neutral)' }}>
@@ -108,7 +108,7 @@ function StatCard({ label, value, accent }: { label: string; value: number; acce
         borderLeft: isOverdue ? '3px solid var(--brand)' : undefined,
       }}
     >
-      <p className="text-[11px] uppercase tracking-widest font-semibold mb-3" style={{ color: 'var(--neutral)' }}>
+      <p className="text-[10px] uppercase tracking-wide font-semibold mb-3 leading-tight" style={{ color: 'var(--neutral)' }}>
         {label}
       </p>
       <p
