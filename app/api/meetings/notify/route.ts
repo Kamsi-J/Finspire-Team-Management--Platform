@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { sendTextMessage, buildMeetingNotificationText } from '@/lib/whatsapp'
+import { sendTemplateMessage } from '@/lib/whatsapp'
 
 export async function POST(req: NextRequest) {
   const { meetingId } = await req.json()
@@ -15,25 +15,45 @@ export async function POST(req: NextRequest) {
 
   const { data: members } = await supabaseAdmin
     .from('team_members')
-    .select('whatsapp_number')
+    .select('name, whatsapp_number')
     .eq('is_active', true)
+    .eq('is_admin', false)
 
   if (!members) return NextResponse.json({ error: 'No members' }, { status: 500 })
 
   const formattedDate = new Date(meeting.scheduled_at).toLocaleString('en-GB', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
+    weekday: 'short', day: 'numeric', month: 'short',
+    hour: '2-digit', minute: '2-digit',
   })
 
-  const text = buildMeetingNotificationText(
-    meeting.title,
-    formattedDate,
-    meeting.join_link,
-    meeting.description
-  )
+  // Extract room code from Google Meet URL (last path segment)
+  const meetRoomCode = meeting.join_link
+    ? meeting.join_link.replace(/^https?:\/\/meet\.google\.com\//, '').replace(/\/$/, '')
+    : null
 
   const results = await Promise.allSettled(
-    members.map((m) => sendTextMessage(m.whatsapp_number, text))
+    members.map((m) => {
+      const components: object[] = [
+        {
+          type: 'body',
+          parameters: [
+            { type: 'text', text: m.name },
+            { type: 'text', text: meeting.title },
+            { type: 'text', text: formattedDate },
+          ],
+        },
+      ]
+      // Only attach the URL button component if there's a Meet link
+      if (meetRoomCode) {
+        components.push({
+          type: 'button',
+          sub_type: 'url',
+          index: 0,
+          parameters: [{ type: 'text', text: meetRoomCode }],
+        })
+      }
+      return sendTemplateMessage(m.whatsapp_number, 'meeting_notification', 'en', components)
+    })
   )
 
   const sent = results.filter((r) => r.status === 'fulfilled').length

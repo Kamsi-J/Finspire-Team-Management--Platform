@@ -102,7 +102,8 @@ async function sendPerformanceReport() {
 
   if (!members || !admins) return
 
-  const stats = []
+  // Pull per-member stats: completed this week, currently overdue, total assigned
+  const stats: { name: string; completed: number; overdue: number; total: number; rate: number }[] = []
   for (const m of members) {
     const [{ count: completed }, { count: overdue }, { count: total }] = await Promise.all([
       supabase.from('tasks').select('*', { count: 'exact', head: true })
@@ -112,20 +113,49 @@ async function sendPerformanceReport() {
       supabase.from('tasks').select('*', { count: 'exact', head: true })
         .eq('assignee_id', m.id).in('status', ['done', 'overdue', 'pending', 'in_progress']),
     ])
-    stats.push({ name: m.name, completed: completed ?? 0, overdue: overdue ?? 0, total: total ?? 0 })
+    const c = completed ?? 0
+    const t = total ?? 0
+    stats.push({
+      name: m.name,
+      completed: c,
+      overdue: overdue ?? 0,
+      total: t,
+      rate: t > 0 ? Math.round((c / t) * 100) : 0,
+    })
   }
 
-  const weekLabel = `Week of ${weekStartStr}`
-  const lines = [`📊 *Finspire Weekly Report*`, `_${weekLabel}_`, ``]
-  stats.forEach((s) => {
-    const rate = s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0
-    const emoji = rate >= 80 ? '🟢' : rate >= 50 ? '🟡' : '🔴'
-    lines.push(`${emoji} *${s.name}*: ${s.completed}/${s.total} done${s.overdue > 0 ? ` · ${s.overdue} overdue` : ''}`)
-  })
+  // Aggregates
+  const totalCompleted = stats.reduce((sum, s) => sum + s.completed, 0)
+  const totalOutstanding = stats.reduce((sum, s) => sum + (s.total - s.completed), 0)
 
-  const report = lines.join('\n')
+  // Top performer — highest rate among members with at least 1 task
+  const topPerformer = stats
+    .filter((s) => s.total > 0)
+    .sort((a, b) => b.rate - a.rate)[0]
+
+  const weekLabel = `Week of ${weekStartStr}`
+
+  // Per-member breakdown line per person
+  const breakdownText = stats.map((s) => {
+    const emoji = s.rate >= 80 ? '🟢' : s.rate >= 50 ? '🟡' : '🔴'
+    const overdueNote = s.overdue > 0 ? ` · ${s.overdue} overdue` : ''
+    return `${emoji} ${s.name} — ${s.completed}/${s.total} done${overdueNote}`
+  }).join('\n')
+
+  const topPerformerText = topPerformer
+    ? `${topPerformer.name} (${topPerformer.rate}% completion rate)`
+    : 'No data yet'
+
   for (const admin of admins) {
-    await sendWaText(admin.whatsapp_number, report)
+    await sendWaTemplate(admin.whatsapp_number, 'weekly_digest', [
+      { type: 'body', parameters: [
+        { type: 'text', text: weekLabel },
+        { type: 'text', text: String(totalCompleted) },
+        { type: 'text', text: `${totalOutstanding} task${totalOutstanding !== 1 ? 's' : ''}` },
+        { type: 'text', text: breakdownText },
+        { type: 'text', text: topPerformerText },
+      ]},
+    ])
   }
 }
 
