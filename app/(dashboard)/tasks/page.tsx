@@ -2,6 +2,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Task, TaskStatus, TeamMember } from '@/types'
+import { useToast } from '@/components/Toast'
+import { SkeletonRow } from '@/components/Skeleton'
+import { EmptyState } from '@/components/EmptyState'
 
 async function apiFetch(path: string, opts?: RequestInit) {
   const res = await fetch(path, opts)
@@ -10,34 +13,66 @@ async function apiFetch(path: string, opts?: RequestInit) {
 
 type TaskRow = Task & { team_members?: { name: string } }
 type EditForm = {
-  taskId: string; title: string; description: string
-  assignee_id: string; priority: 'urgent' | 'normal'; due_date: string
+  taskId: string
+  title: string
+  description: string
+  assignee_id: string
+  priority: 'urgent' | 'normal'
+  due_date: string
 }
 type DeleteTarget = { taskId: string; title: string }
 
 const STATUS_FILTERS = ['all', 'pending', 'in_progress', 'overdue', 'done'] as const
 const FILTER_LABELS: Record<string, string> = {
-  all: 'All', pending: 'Pending', in_progress: 'In Progress', overdue: 'Overdue', done: 'Done',
+  all: 'All',
+  pending: 'Pending',
+  in_progress: 'In Progress',
+  overdue: 'Overdue',
+  done: 'Done',
 }
 
 const STATUS_CONFIG = {
-  pending:     { label: 'Pending',     dot: '#F59E0B', pill: { background: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A' } as React.CSSProperties },
-  in_progress: { label: 'In Progress', dot: '#3B82F6', pill: { background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' } as React.CSSProperties },
-  done:        { label: 'Done',        dot: '#22C55E', pill: { background: '#F0FDF4', color: '#15803D', border: '1px solid #86EFAC' } as React.CSSProperties },
-  overdue:     { label: 'Overdue',     dot: '#EF4444', pill: { background: '#FFF1F2', color: '#BE123C', border: '1px solid #FECACA' } as React.CSSProperties },
+  pending: {
+    label: 'Pending',
+    dot: '#F59E0B',
+    pill: { background: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A' } as React.CSSProperties,
+  },
+  in_progress: {
+    label: 'In Progress',
+    dot: '#3B82F6',
+    pill: { background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' } as React.CSSProperties,
+  },
+  done: {
+    label: 'Done',
+    dot: '#22C55E',
+    pill: { background: '#F0FDF4', color: '#15803D', border: '1px solid #86EFAC' } as React.CSSProperties,
+  },
+  overdue: {
+    label: 'Overdue',
+    dot: '#EF4444',
+    pill: { background: '#FFF1F2', color: '#BE123C', border: '1px solid #FECACA' } as React.CSSProperties,
+  },
 }
+
 function statusConfig(status: string) {
   return STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.pending
 }
 
 export default function TasksPage() {
+  const { showToast } = useToast()
   const [tasks, setTasks] = useState<TaskRow[]>([])
   const [members, setMembers] = useState<TeamMember[]>([])
   const [showForm, setShowForm] = useState(false)
   const [filter, setFilter] = useState('all')
   const [assigneeFilter, setAssigneeFilter] = useState('')
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ title: '', description: '', assignee_id: '', priority: 'normal' as 'urgent' | 'normal', due_date: '' })
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    assignee_id: '',
+    priority: 'normal' as 'urgent' | 'normal',
+    due_date: '',
+  })
   const [saving, setSaving] = useState(false)
   const [editForm, setEditForm] = useState<EditForm | null>(null)
   const [editSaving, setEditSaving] = useState(false)
@@ -45,8 +80,6 @@ export default function TasksPage() {
   const [deleting, setDeleting] = useState(false)
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const [statusMenu, setStatusMenu] = useState<string | null>(null)
-
-  // All tasks unfiltered (for counts)
   const [allTasks, setAllTasks] = useState<TaskRow[]>([])
 
   useEffect(() => {
@@ -59,7 +92,9 @@ export default function TasksPage() {
     return () => document.removeEventListener('mousedown', closeMenus)
   }, [])
 
-  useEffect(() => { fetchData() }, [filter, assigneeFilter])
+  useEffect(() => {
+    fetchData()
+  }, [filter, assigneeFilter])
 
   async function fetchData() {
     setLoading(true)
@@ -67,14 +102,14 @@ export default function TasksPage() {
     if (filter !== 'all') params.set('status', filter)
     if (assigneeFilter) params.set('assignee_id', assigneeFilter)
 
-    const [tasks, { data: m }, allTasks] = await Promise.all([
+    const [tasksRes, { data: m }, allTasksRes] = await Promise.all([
       apiFetch(`/api/tasks?${params}`),
       supabase.from('team_members').select('*').eq('is_active', true),
       apiFetch('/api/tasks'),
     ])
-    setTasks(Array.isArray(tasks) ? tasks : [])
+    setTasks(Array.isArray(tasksRes) ? tasksRes : [])
     setMembers(m ?? [])
-    setAllTasks(Array.isArray(allTasks) ? allTasks : [])
+    setAllTasks(Array.isArray(allTasksRes) ? allTasksRes : [])
     setLoading(false)
   }
 
@@ -86,7 +121,7 @@ export default function TasksPage() {
   async function createTask(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    await apiFetch('/api/tasks', {
+    const res = await apiFetch('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...form, assignee_id: form.assignee_id || null, status: 'pending', source: 'manual' }),
@@ -94,6 +129,11 @@ export default function TasksPage() {
     setForm({ title: '', description: '', assignee_id: '', priority: 'normal', due_date: '' })
     setShowForm(false)
     setSaving(false)
+    if (res?.id || res?.[0]?.id) {
+      showToast('Task created successfully!', 'success')
+    } else {
+      showToast('Task created', 'success')
+    }
     fetchData()
   }
 
@@ -115,19 +155,21 @@ export default function TasksPage() {
     })
     setEditForm(null)
     setEditSaving(false)
+    showToast('Task changes saved', 'success')
     fetchData()
   }
 
   async function updateStatus(id: string, status: TaskStatus) {
     setStatusMenu(null)
-    // optimistic update — color changes instantly
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t))
-    setAllTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t))
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)))
+    setAllTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)))
+    showToast(`Status updated to ${statusConfig(status).label}`, 'success')
     await apiFetch('/api/tasks', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        id, status,
+        id,
+        status,
         ...(status === 'done' ? { completed_at: new Date().toISOString() } : { completed_at: null }),
       }),
     })
@@ -143,6 +185,7 @@ export default function TasksPage() {
     })
     setDeleting(false)
     setDeleteTarget(null)
+    showToast('Task deleted', 'info')
     fetchData()
   }
 
@@ -158,75 +201,133 @@ export default function TasksPage() {
     })
   }
 
-  const inputClass = "w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none"
+  const inputClass = 'w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none'
   const inputStyle = { border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text)' }
 
   return (
-    <div className="p-8">
+    <div className="p-8 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex justify-between items-start mb-8">
+      <div className="flex justify-between items-start mb-8 flex-wrap gap-4">
         <div>
-          <p className="text-[11px] font-mono-code uppercase tracking-widest mb-2" style={{ color: 'var(--neutral)' }}>Management</p>
-          <h1 className="font-display font-bold text-[28px] leading-tight" style={{ color: 'var(--text)', letterSpacing: '-0.02em' }}>Tasks</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>{allTasks.length} total tasks</p>
+          <p className="text-[11px] font-mono-code uppercase tracking-widest mb-2" style={{ color: 'var(--neutral)' }}>
+            Management
+          </p>
+          <h1 className="font-display font-bold text-[28px] leading-tight" style={{ color: 'var(--text)', letterSpacing: '-0.02em' }}>
+            Tasks
+          </h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>
+            {allTasks.length} total task{allTasks.length !== 1 ? 's' : ''} across team
+          </p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 shadow-xs"
           style={{ background: 'var(--brand)' }}
         >
-          + New Task
+          {showForm ? '✕ Close Form' : '+ New Task'}
         </button>
       </div>
 
       {/* Create form */}
       {showForm && (
-        <div className="rounded-xl p-6 mb-6 animate-fade-in" style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-          <h3 className="font-display font-bold text-base mb-5" style={{ color: 'var(--text)' }}>Create Task</h3>
+        <div
+          className="rounded-xl p-6 mb-6 animate-fade-in"
+          style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+        >
+          <h3 className="font-display font-bold text-base mb-5" style={{ color: 'var(--text)' }}>
+            Create Task
+          </h3>
           <form onSubmit={createTask}>
             <div className="space-y-4">
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Title *</label>
-                <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className={inputClass} style={inputStyle} placeholder="e.g. Update investor pitch deck" />
+                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>
+                  Title *
+                </label>
+                <input
+                  required
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  className={inputClass}
+                  style={inputStyle}
+                  placeholder="e.g. Update investor pitch deck"
+                />
               </div>
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Description</label>
-                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  rows={2} className={`${inputClass} resize-none`} style={inputStyle} placeholder="Optional details…" />
+                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>
+                  Description
+                </label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  rows={2}
+                  className={`${inputClass} resize-none`}
+                  style={inputStyle}
+                  placeholder="Optional details…"
+                />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Assign to</label>
-                  <select value={form.assignee_id} onChange={(e) => setForm({ ...form, assignee_id: e.target.value })}
-                    className={inputClass} style={inputStyle}>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>
+                    Assign to
+                  </label>
+                  <select
+                    value={form.assignee_id}
+                    onChange={(e) => setForm({ ...form, assignee_id: e.target.value })}
+                    className={inputClass}
+                    style={inputStyle}
+                  >
                     <option value="">Unassigned</option>
-                    {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    {members.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Priority</label>
-                  <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as 'urgent' | 'normal' })}
-                    className={inputClass} style={inputStyle}>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>
+                    Priority
+                  </label>
+                  <select
+                    value={form.priority}
+                    onChange={(e) => setForm({ ...form, priority: e.target.value as 'urgent' | 'normal' })}
+                    className={inputClass}
+                    style={inputStyle}
+                  >
                     <option value="normal">Normal</option>
                     <option value="urgent">Urgent</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Due date *</label>
-                  <input required type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })}
-                    className={inputClass} style={inputStyle} />
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>
+                    Due date *
+                  </label>
+                  <input
+                    required
+                    type="date"
+                    value={form.due_date}
+                    onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                    className={inputClass}
+                    style={inputStyle}
+                  />
                 </div>
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-5">
-              <button type="button" onClick={() => setShowForm(false)}
-                className="px-4 py-2 text-sm font-medium rounded-lg transition-colors hover:opacity-70" style={{ color: 'var(--text-2)' }}>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="px-4 py-2 text-sm font-medium rounded-lg transition-colors hover:opacity-70"
+                style={{ color: 'var(--text-2)' }}
+              >
                 Cancel
               </button>
-              <button type="submit" disabled={saving}
+              <button
+                type="submit"
+                disabled={saving}
                 className="px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
-                style={{ background: 'var(--brand)' }}>
+                style={{ background: 'var(--brand)' }}
+              >
                 {saving ? 'Saving…' : 'Create Task'}
               </button>
             </div>
@@ -236,51 +337,98 @@ export default function TasksPage() {
 
       {/* Edit modal */}
       {editForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="w-full max-w-lg rounded-xl p-6" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
-            <h3 className="font-display font-bold text-base mb-5" style={{ color: 'var(--text)' }}>Edit Task</h3>
+            <h3 className="font-display font-bold text-base mb-5" style={{ color: 'var(--text)' }}>
+              Edit Task
+            </h3>
             <form onSubmit={saveEdit} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Title *</label>
-                <input required value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                  className={inputClass} style={inputStyle} />
+                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>
+                  Title *
+                </label>
+                <input
+                  required
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  className={inputClass}
+                  style={inputStyle}
+                />
               </div>
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Description</label>
-                <textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                  rows={2} className={`${inputClass} resize-none`} style={inputStyle} />
+                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>
+                  Description
+                </label>
+                <textarea
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  rows={2}
+                  className={`${inputClass} resize-none`}
+                  style={inputStyle}
+                />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Assign to</label>
-                  <select value={editForm.assignee_id} onChange={(e) => setEditForm({ ...editForm, assignee_id: e.target.value })}
-                    className={inputClass} style={inputStyle}>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>
+                    Assign to
+                  </label>
+                  <select
+                    value={editForm.assignee_id}
+                    onChange={(e) => setEditForm({ ...editForm, assignee_id: e.target.value })}
+                    className={inputClass}
+                    style={inputStyle}
+                  >
                     <option value="">Unassigned</option>
-                    {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    {members.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Priority</label>
-                  <select value={editForm.priority} onChange={(e) => setEditForm({ ...editForm, priority: e.target.value as 'urgent' | 'normal' })}
-                    className={inputClass} style={inputStyle}>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>
+                    Priority
+                  </label>
+                  <select
+                    value={editForm.priority}
+                    onChange={(e) => setEditForm({ ...editForm, priority: e.target.value as 'urgent' | 'normal' })}
+                    className={inputClass}
+                    style={inputStyle}
+                  >
                     <option value="normal">Normal</option>
                     <option value="urgent">Urgent</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Due date *</label>
-                  <input required type="date" value={editForm.due_date} onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
-                    className={inputClass} style={inputStyle} />
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>
+                    Due date *
+                  </label>
+                  <input
+                    required
+                    type="date"
+                    value={editForm.due_date}
+                    onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
+                    className={inputClass}
+                    style={inputStyle}
+                  />
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-1">
-                <button type="button" onClick={() => setEditForm(null)}
-                  className="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-70 transition-opacity" style={{ color: 'var(--text-2)' }}>
+                <button
+                  type="button"
+                  onClick={() => setEditForm(null)}
+                  className="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-70 transition-opacity"
+                  style={{ color: 'var(--text-2)' }}
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={editSaving}
+                <button
+                  type="submit"
+                  disabled={editSaving}
                   className="px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
-                  style={{ background: 'var(--brand)' }}>
+                  style={{ background: 'var(--brand)' }}
+                >
                   {editSaving ? 'Saving…' : 'Save Changes'}
                 </button>
               </div>
@@ -291,20 +439,28 @@ export default function TasksPage() {
 
       {/* Delete confirmation */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="w-full max-w-sm rounded-xl p-6" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
-            <h3 className="font-display font-bold text-base mb-1" style={{ color: 'var(--text)' }}>Delete task?</h3>
+            <h3 className="font-display font-bold text-base mb-1" style={{ color: 'var(--text)' }}>
+              Delete task?
+            </h3>
             <p className="text-xs mb-5" style={{ color: 'var(--text-3)' }}>
               "{deleteTarget.title}" will be permanently deleted. This cannot be undone.
             </p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setDeleteTarget(null)}
-                className="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-70 transition-opacity" style={{ color: 'var(--text-2)' }}>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-70 transition-opacity"
+                style={{ color: 'var(--text-2)' }}
+              >
                 Cancel
               </button>
-              <button onClick={deleteTask} disabled={deleting}
+              <button
+                onClick={deleteTask}
+                disabled={deleting}
                 className="px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-opacity"
-                style={{ background: '#DC2626' }}>
+                style={{ background: '#DC2626' }}
+              >
                 {deleting ? 'Deleting…' : 'Delete'}
               </button>
             </div>
@@ -314,22 +470,31 @@ export default function TasksPage() {
 
       {/* Filters row */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <div className="flex gap-1 p-1 rounded-lg" style={{ background: 'var(--border)' }}>
+        <div className="flex gap-1 p-1 rounded-lg border border-[var(--border)] bg-[var(--card)]">
           {STATUS_FILTERS.map((f) => {
             const count = countFor(f)
             return (
-              <button key={f} onClick={() => setFilter(f)}
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
                 className="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center gap-1.5"
-                style={filter === f
-                  ? { background: 'var(--card)', color: 'var(--text)', boxShadow: '0 1px 2px rgba(0,0,0,0.08)' }
-                  : { color: 'var(--neutral)' }
-                }>
+                style={
+                  filter === f
+                    ? { background: 'var(--brand)', color: '#FFFFFF', boxShadow: '0 1px 2px rgba(0,0,0,0.08)' }
+                    : { color: 'var(--neutral)' }
+                }
+              >
                 {FILTER_LABELS[f]}
                 {count > 0 && (
-                  <span className="text-[10px] font-bold px-1 rounded" style={{
-                    background: filter === f ? 'var(--brand-light)' : 'rgba(0,0,0,0.06)',
-                    color: filter === f ? 'var(--brand)' : 'inherit',
-                  }}>{count}</span>
+                  <span
+                    className="text-[10px] font-bold px-1.5 py-0.2 rounded"
+                    style={{
+                      background: filter === f ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.06)',
+                      color: filter === f ? '#FFFFFF' : 'inherit',
+                    }}
+                  >
+                    {count}
+                  </span>
                 )}
               </button>
             )
@@ -340,142 +505,166 @@ export default function TasksPage() {
           <select
             value={assigneeFilter}
             onChange={(e) => setAssigneeFilter(e.target.value)}
-            className="text-xs px-3 py-2 rounded-lg font-medium focus:outline-none"
-            style={{ border: '1px solid var(--border)', background: 'var(--card)', color: assigneeFilter ? 'var(--text)' : 'var(--neutral)' }}
+            className="text-xs px-3 py-2 rounded-lg font-medium focus:outline-none border border-[var(--border)] bg-[var(--card)]"
+            style={{ color: assigneeFilter ? 'var(--text)' : 'var(--neutral)' }}
           >
             <option value="">All members</option>
-            {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
           </select>
         )}
       </div>
 
       {/* Task list */}
-      <div className="rounded-xl" style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-        {loading && <div className="p-10 text-center text-sm" style={{ color: 'var(--text-3)' }}>Loading…</div>}
-        {!loading && tasks.length === 0 && (
-          <div className="p-10 text-center text-sm" style={{ color: 'var(--text-3)' }}>No tasks found.</div>
-        )}
-        {tasks.map((task, i) => (
-          <div
-            key={task.id}
-            className="px-5 py-4 flex items-center gap-4"
-            style={{
-              borderBottom: i < tasks.length - 1 ? `1px solid ${task.status === 'overdue' ? '#FECACA' : 'var(--border)'}` : 'none',
-              borderRadius: tasks.length === 1 ? '12px' : i === 0 ? '12px 12px 0 0' : i === tasks.length - 1 ? '0 0 12px 12px' : undefined,
-              background: task.status === 'overdue' ? '#FFF1F2' : undefined,
-              transition: 'background 0.3s',
-            }}
-          >
-            {/* Task info */}
-            <div className="min-w-0 flex-1">
-              {task.status === 'overdue' && (
-                <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{ color: '#BE123C', letterSpacing: '0.1em' }}>Overdue</p>
-              )}
-              <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                {task.priority === 'urgent' && (
-                  <span className="text-[10px] font-mono-code font-bold tracking-widest" style={{ color: task.status === 'overdue' ? '#BE123C' : 'var(--brand)' }}>URGENT</span>
-                )}
-                <p className="text-sm font-semibold truncate" style={{ color: task.status === 'overdue' ? '#BE123C' : 'var(--text)' }}>{task.title}</p>
-              </div>
-              {task.description && (
-                <p className="text-xs truncate mb-0.5" style={{ color: task.status === 'overdue' ? '#E57373' : 'var(--text-3)' }}>{task.description}</p>
-              )}
-              <p className="text-xs" style={{ color: task.status === 'overdue' ? '#E57373' : 'var(--text-3)' }}>
-                {(task as any).team_members?.name ?? 'Unassigned'} · Due {task.due_date}
-              </p>
-            </div>
-
-            {/* Status pill */}
-            <div className="relative flex-shrink-0" data-status-menu="">
-              <button
-                onClick={() => setStatusMenu(statusMenu === task.id ? null : task.id)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold cursor-pointer"
-                style={{
-                  ...statusConfig(task.status).pill,
-                  transition: 'background 0.25s, color 0.25s, border-color 0.25s',
-                }}
-              >
-                <span
-                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                  style={{ background: statusConfig(task.status).dot, transition: 'background 0.25s' }}
-                />
-                {statusConfig(task.status).label}
-                <span style={{ opacity: 0.5, fontSize: '9px', marginLeft: '1px' }}>▾</span>
-              </button>
-              {statusMenu === task.id && (
-                <div
-                  className="absolute right-0 top-full mt-1.5 w-38 rounded-xl overflow-hidden z-30"
-                  style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 4px 20px rgba(0,0,0,0.14)', minWidth: '140px' }}
-                >
-                  {(['in_progress', 'done'] as const).map((s) => {
-                    const cfg = statusConfig(s)
-                    const isActive = task.status === s
-                    return (
-                      <button
-                        key={s}
-                        onClick={() => updateStatus(task.id, s)}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium transition-colors"
-                        style={{
-                          background: isActive ? cfg.pill.background : 'transparent',
-                          color: isActive ? (cfg.pill as { color: string }).color : 'var(--text)',
-                        }}
-                        onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--canvas)' }}
-                        onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
-                      >
-                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: cfg.dot }} />
-                        {cfg.label}
-                        {isActive && <span className="ml-auto" style={{ color: cfg.dot }}>✓</span>}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Kebab menu */}
-            <div className="relative flex-shrink-0" data-task-menu="">
-              <button
-                onClick={() => setOpenMenu(openMenu === task.id ? null : task.id)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-lg leading-none transition-colors"
-                style={{
-                  color: 'var(--text-3)',
-                  background: openMenu === task.id ? 'var(--canvas)' : 'transparent',
-                  border: '1px solid ' + (openMenu === task.id ? 'var(--border)' : 'transparent'),
-                }}
-              >
-                ···
-              </button>
-              {openMenu === task.id && (
-                <div
-                  className="absolute right-0 top-full mt-1 w-36 rounded-xl overflow-hidden z-30"
-                  style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
-                >
-                  <button
-                    onClick={() => openEdit(task)}
-                    className="w-full text-left px-4 py-2.5 text-sm transition-colors"
-                    style={{ color: 'var(--text)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--canvas)' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-                  >
-                    Edit task
-                  </button>
-                  <div style={{ borderTop: '1px solid var(--border)' }} />
-                  <button
-                    onClick={() => { setOpenMenu(null); setDeleteTarget({ taskId: task.id, title: task.title }) }}
-                    className="w-full text-left px-4 py-2.5 text-sm transition-colors"
-                    style={{ color: '#DC2626' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#FFF1F2' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-                  >
-                    Delete task
-                  </button>
-                </div>
-              )}
-            </div>
+      <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+        {loading && (
+          <div>
+            <SkeletonRow />
+            <SkeletonRow />
+            <SkeletonRow />
+            <SkeletonRow />
           </div>
-        ))}
+        )}
+
+        {!loading && tasks.length === 0 && (
+          <EmptyState
+            icon="📝"
+            title="No tasks match the selected filter"
+            description="Create a new task or adjust your status/member filters above."
+            actionLabel="+ New Task"
+            onAction={() => setShowForm(true)}
+          />
+        )}
+
+        {!loading &&
+          tasks.map((task, i) => (
+            <div
+              key={task.id}
+              className="px-5 py-4 flex items-center gap-4 transition-colors"
+              style={{
+                borderBottom: i < tasks.length - 1 ? `1px solid ${task.status === 'overdue' ? '#FECACA' : 'var(--border)'}` : 'none',
+                background: task.status === 'overdue' ? '#FFF1F2' : undefined,
+              }}
+            >
+              {/* Task info */}
+              <div className="min-w-0 flex-1">
+                {task.status === 'overdue' && (
+                  <p className="text-[10px] font-bold tracking-widest uppercase mb-1 text-rose-700">Overdue</p>
+                )}
+                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                  {task.priority === 'urgent' && (
+                    <span
+                      className="text-[10px] font-mono-code font-bold tracking-widest"
+                      style={{ color: task.status === 'overdue' ? '#BE123C' : 'var(--brand)' }}
+                    >
+                      URGENT
+                    </span>
+                  )}
+                  <p className="text-sm font-semibold truncate" style={{ color: task.status === 'overdue' ? '#BE123C' : 'var(--text)' }}>
+                    {task.title}
+                  </p>
+                </div>
+                {task.description && (
+                  <p className="text-xs truncate mb-0.5" style={{ color: task.status === 'overdue' ? '#E57373' : 'var(--text-3)' }}>
+                    {task.description}
+                  </p>
+                )}
+                <p className="text-xs flex items-center gap-1 flex-wrap" style={{ color: task.status === 'overdue' ? '#E57373' : 'var(--text-3)' }}>
+                  <span className="font-bold text-[var(--text)]" style={{ color: task.status === 'overdue' ? '#BE123C' : 'var(--text)' }}>
+                    👤 {(task as any).team_members?.name ?? 'Unassigned'}
+                  </span>
+                  <span className="mx-0.5 text-gray-400">•</span>
+                  <span>Due {task.due_date}</span>
+                </p>
+              </div>
+
+              {/* Status pill */}
+              <div className="relative flex-shrink-0" data-status-menu="">
+                <button
+                  onClick={() => setStatusMenu(statusMenu === task.id ? null : task.id)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold cursor-pointer"
+                  style={statusConfig(task.status).pill}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: statusConfig(task.status).dot }} />
+                  {statusConfig(task.status).label}
+                  <span style={{ opacity: 0.5, fontSize: '9px', marginLeft: '1px' }}>▾</span>
+                </button>
+                {statusMenu === task.id && (
+                  <div
+                    className="absolute right-0 top-full mt-1.5 rounded-xl overflow-hidden z-30 animate-in fade-in zoom-in-95 duration-100"
+                    style={{
+                      background: 'var(--card)',
+                      border: '1px solid var(--border)',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.14)',
+                      minWidth: '140px',
+                    }}
+                  >
+                    {(['pending', 'in_progress', 'done'] as const).map((s) => {
+                      const cfg = statusConfig(s)
+                      const isActive = task.status === s
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => updateStatus(task.id, s)}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium transition-colors"
+                          style={{
+                            background: isActive ? cfg.pill.background : 'transparent',
+                            color: isActive ? (cfg.pill as { color: string }).color : 'var(--text)',
+                          }}
+                        >
+                          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: cfg.dot }} />
+                          {cfg.label}
+                          {isActive && <span className="ml-auto" style={{ color: cfg.dot }}>✓</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Kebab menu */}
+              <div className="relative flex-shrink-0" data-task-menu="">
+                <button
+                  onClick={() => setOpenMenu(openMenu === task.id ? null : task.id)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-lg leading-none transition-colors hover:bg-gray-100"
+                  style={{
+                    color: 'var(--text-3)',
+                    background: openMenu === task.id ? 'var(--canvas)' : 'transparent',
+                  }}
+                >
+                  ···
+                </button>
+                {openMenu === task.id && (
+                  <div
+                    className="absolute right-0 top-full mt-1 w-36 rounded-xl overflow-hidden z-30 animate-in fade-in zoom-in-95 duration-100"
+                    style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
+                  >
+                    <button
+                      onClick={() => openEdit(task)}
+                      className="w-full text-left px-4 py-2.5 text-xs font-medium transition-colors hover:bg-gray-50"
+                      style={{ color: 'var(--text)' }}
+                    >
+                      Edit task
+                    </button>
+                    <div style={{ borderTop: '1px solid var(--border)' }} />
+                    <button
+                      onClick={() => {
+                        setOpenMenu(null)
+                        setDeleteTarget({ taskId: task.id, title: task.title })
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-50"
+                    >
+                      Delete task
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
       </div>
     </div>
   )
 }
-

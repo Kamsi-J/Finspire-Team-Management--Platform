@@ -25,9 +25,9 @@ export default function LoginPage() {
     const { data: member } = await supabase
       .from('team_members')
       .select('is_admin')
-      .eq('email', user.email)
-      .single()
-    router.push(member?.is_admin !== false ? '/' : '/my-tasks')
+      .ilike('email', user.email?.trim() || '')
+      .maybeSingle()
+    router.push(member?.is_admin ? '/' : '/my-tasks')
   }
 
   return (

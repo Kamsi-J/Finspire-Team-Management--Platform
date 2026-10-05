@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Lora, Hanken_Grotesk, JetBrains_Mono } from 'next/font/google'
+import { ToastProvider } from '@/components/Toast'
 import './globals.css'
 
 const lora = Lora({ subsets: ['latin'], variable: '--font-lora' })
@@ -15,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={`${lora.variable} ${hanken.variable} ${jetbrains.variable} font-sans`}>
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   )

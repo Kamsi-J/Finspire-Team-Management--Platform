@@ -77,7 +77,7 @@ export default async function OverviewPage() {
                   <p className="text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>{task.title}</p>
                 </div>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-3)' }}>
-                  {task.team_members?.name ?? 'Unassigned'} · Due {task.due_date}
+                  <span className="font-bold text-[var(--text)]">👤 {task.team_members?.name ?? 'Unassigned'}</span> · Due {task.due_date}
                 </p>
               </div>
               <StatusChip status={task.status} />
