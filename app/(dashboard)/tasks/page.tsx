@@ -108,11 +108,37 @@ export default function TasksPage() {
         apiFetch('/api/members?active_only=true'),
         apiFetch('/api/tasks'),
       ])
-      setTasks(Array.isArray(tasksRes) ? tasksRes : [])
-      setMembers(Array.isArray(membersRes) ? membersRes : [])
-      setAllTasks(Array.isArray(allTasksRes) ? allTasksRes : [])
+
+      let loadedTasks = Array.isArray(tasksRes) ? tasksRes : []
+      let loadedMembers = Array.isArray(membersRes) ? membersRes : []
+      let loadedAllTasks = Array.isArray(allTasksRes) ? allTasksRes : []
+
+      // Fallback if API returned non-array or empty due to env key issue
+      if (loadedMembers.length === 0) {
+        const { data: m } = await supabase.from('team_members').select('*').eq('is_active', true).order('name')
+        if (m && m.length > 0) loadedMembers = m
+      }
+
+      if (loadedAllTasks.length === 0) {
+        const { data: t } = await supabase.from('tasks').select('*, team_members!assignee_id(name)').order('due_date', { ascending: true })
+        if (t && t.length > 0) {
+          loadedAllTasks = t as TaskRow[]
+          if (filter === 'all' && !assigneeFilter) loadedTasks = t as TaskRow[]
+        }
+      }
+
+      setTasks(loadedTasks)
+      setMembers(loadedMembers)
+      setAllTasks(loadedAllTasks)
     } catch (err) {
       console.error('[Tasks Page Fetch Error]', err)
+      const [{ data: t }, { data: m }] = await Promise.all([
+        supabase.from('tasks').select('*, team_members!assignee_id(name)').order('due_date', { ascending: true }),
+        supabase.from('team_members').select('*').eq('is_active', true).order('name'),
+      ])
+      setTasks((t as TaskRow[]) ?? [])
+      setMembers(m ?? [])
+      setAllTasks((t as TaskRow[]) ?? [])
     } finally {
       setLoading(false)
     }
