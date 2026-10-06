@@ -29,6 +29,16 @@ export default function MembersPage() {
   }, [])
 
   async function fetchMembers() {
+    try {
+      const res = await fetch('/api/members?active_only=false')
+      if (res.ok) {
+        const data = await res.json()
+        setMembers(Array.isArray(data) ? data : [])
+        return
+      }
+    } catch (err) {
+      console.error('[Fetch Members Error]', err)
+    }
     const { data } = await supabase.from('team_members').select('*').order('name')
     setMembers(data ?? [])
   }
@@ -37,7 +47,16 @@ export default function MembersPage() {
     e.preventDefault()
     setSaving(true)
     const number = form.whatsapp_number.replace(/^\+/, '')
-    await supabase.from('team_members').insert({ ...form, whatsapp_number: number })
+    try {
+      await fetch('/api/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, whatsapp_number: number }),
+      })
+    } catch (err) {
+      console.error('[Save Member Error]', err)
+      await supabase.from('team_members').insert({ ...form, whatsapp_number: number })
+    }
     setForm({ name: '', role: '', whatsapp_number: '', email: '', is_admin: false })
     setShowForm(false)
     setSaving(false)
@@ -45,7 +64,16 @@ export default function MembersPage() {
   }
 
   async function toggleActive(id: string, current: boolean) {
-    await supabase.from('team_members').update({ is_active: !current }).eq('id', id)
+    try {
+      await fetch('/api/members', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, is_active: !current }),
+      })
+    } catch (err) {
+      console.error('[Toggle Active Error]', err)
+      await supabase.from('team_members').update({ is_active: !current }).eq('id', id)
+    }
     fetchMembers()
   }
 

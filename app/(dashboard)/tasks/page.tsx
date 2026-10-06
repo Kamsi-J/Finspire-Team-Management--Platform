@@ -102,15 +102,20 @@ export default function TasksPage() {
     if (filter !== 'all') params.set('status', filter)
     if (assigneeFilter) params.set('assignee_id', assigneeFilter)
 
-    const [tasksRes, { data: m }, allTasksRes] = await Promise.all([
-      apiFetch(`/api/tasks?${params}`),
-      supabase.from('team_members').select('*').eq('is_active', true),
-      apiFetch('/api/tasks'),
-    ])
-    setTasks(Array.isArray(tasksRes) ? tasksRes : [])
-    setMembers(m ?? [])
-    setAllTasks(Array.isArray(allTasksRes) ? allTasksRes : [])
-    setLoading(false)
+    try {
+      const [tasksRes, membersRes, allTasksRes] = await Promise.all([
+        apiFetch(`/api/tasks?${params}`),
+        apiFetch('/api/members?active_only=true'),
+        apiFetch('/api/tasks'),
+      ])
+      setTasks(Array.isArray(tasksRes) ? tasksRes : [])
+      setMembers(Array.isArray(membersRes) ? membersRes : [])
+      setAllTasks(Array.isArray(allTasksRes) ? allTasksRes : [])
+    } catch (err) {
+      console.error('[Tasks Page Fetch Error]', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   function countFor(status: string) {
