@@ -1,13 +1,24 @@
 import type { ExtractedTask, TeamMember } from '@/types'
 
+export interface ParseResult {
+  tasks: ExtractedTask[]
+  error?: string
+}
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 export async function parseTranscript(
   transcript: string,
-  teamMembers: TeamMember[]
-): Promise<ExtractedTask[]> {
-  const apiKey = process.env.GLM_API_KEY
+  teamMembers: TeamMember[],
+  maxRetries = 3,
+  initialDelayMs = 1000
+): Promise<ParseResult> {
+  const apiKey = process.env.GLM_API_KEY || process.env.ANTHROPIC_API_KEY
+
   if (!apiKey) {
-    console.error('[AI Parser] Missing GLM_API_KEY')
-    return []
+    const msg = '[AI Parser] Missing GLM_API_KEY in environment variables.'
+    console.error(msg)
+    return { tasks: [], error: 'AI API Key is missing. Please set GLM_API_KEY in environment variables.' }
   }
 
   const memberList = teamMembers
@@ -51,32 +62,53 @@ JSON Schema:
   }
 ]`
 
-  try {
-    const res = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'glm-4.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Extract action items from this transcript:\n\n${transcript}` },
-        ],
-        temperature: 0.2,
-      }),
-    })
+  let contentText = ''
+  let lastError = ''
 
-    if (!res.ok) {
-      const errText = await res.text()
-      console.error('[GLM 4.5 Flash Error]', res.status, errText)
-      return []
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'glm-4.5-flash',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `Extract action items from this transcript:\n\n${transcript}` },
+          ],
+          temperature: 0.2,
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        contentText = data.choices?.[0]?.message?.content?.trim() ?? ''
+        if (contentText) break
+      } else {
+        const errText = await res.text()
+        lastError = `GLM 4.5 API returned ${res.status}: ${errText}`
+        console.error(`[GLM Error] Attempt ${attempt + 1}/${maxRetries + 1} failed (status ${res.status}):`, errText)
+      }
+    } catch (err: unknown) {
+      lastError = `GLM fetch error: ${err instanceof Error ? err.message : String(err)}`
+      console.error(`[GLM Fetch Exception] Attempt ${attempt + 1}/${maxRetries + 1} failed:`, err)
     }
 
-    const data = await res.json()
-    const contentText = data.choices?.[0]?.message?.content?.trim() ?? ''
+    if (attempt < maxRetries) {
+      const backoffMs = initialDelayMs * Math.pow(2, attempt)
+      console.log(`[GLM Retry] Retrying in ${backoffMs}ms... (Attempt ${attempt + 2}/${maxRetries + 1})`)
+      await delay(backoffMs)
+    }
+  }
 
+  if (!contentText) {
+    return { tasks: [], error: lastError || 'Failed to extract tasks using GLM 4.5 Flash after retries' }
+  }
+
+  try {
     // Clean JSON response (strip markdown wrappers if present)
     const jsonString = contentText
       .replace(/^```json\s*/i, '')
@@ -87,7 +119,7 @@ JSON Schema:
     const rawTasks: ExtractedTask[] = JSON.parse(jsonString)
 
     // Map assignee names to actual team_member IDs
-    return rawTasks.map((task) => {
+    const tasks = rawTasks.map((task) => {
       const matchedMember = teamMembers.find(
         (m) =>
           m.name.toLowerCase().includes(task.assignee_name.toLowerCase()) ||
@@ -99,8 +131,12 @@ JSON Schema:
         assignee_name: matchedMember?.name ?? task.assignee_name,
       }
     })
-  } catch (err) {
-    console.error('[AI Parser] Error parsing transcript:', err)
-    return []
+
+    return { tasks }
+  } catch (err: unknown) {
+    console.error('[AI Parser] Error parsing JSON output:', err, contentText)
+    return { tasks: [], error: 'Failed to parse AI output into valid task list' }
   }
 }
+
+

@@ -30,13 +30,27 @@ export default function TranscriptsPage() {
 
   async function fetchData() {
     setLoading(true)
-    const [{ data: t }, { data: m }] = await Promise.all([
-      supabase.from('transcripts').select('*').order('created_at', { ascending: false }),
-      supabase.from('team_members').select('*').eq('is_active', true),
-    ])
-    setTranscripts(t ?? [])
-    setMembers(m ?? [])
-    setLoading(false)
+    try {
+      const [transRes, { data: m }] = await Promise.all([
+        fetch('/api/transcripts'),
+        supabase.from('team_members').select('*').eq('is_active', true),
+      ])
+
+      if (transRes.ok) {
+        const tData = await transRes.json()
+        setTranscripts(Array.isArray(tData) ? tData : [])
+      } else {
+        const { data: t } = await supabase.from('transcripts').select('*').order('created_at', { ascending: false })
+        setTranscripts(t ?? [])
+      }
+      setMembers(m ?? [])
+    } catch (err) {
+      console.error('[Fetch Transcripts Error]', err)
+      const { data: t } = await supabase.from('transcripts').select('*').order('created_at', { ascending: false })
+      setTranscripts(t ?? [])
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function uploadAndParseTranscript(e: React.FormEvent) {
@@ -44,58 +58,36 @@ export default function TranscriptsPage() {
     if (!form.content.trim()) return
 
     setIsProcessingAI(true)
-    setAiStepMessage('1. Saving meeting transcript to database…')
+    setAiStepMessage('1. Saving transcript & starting GLM 4.5 Flash extraction…')
 
-    // Insert transcript into DB
-    const { data: newTranscript, error } = await supabase
-      .from('transcripts')
-      .insert({
-        meeting_title: form.meeting_title.trim() || 'Untitled Meeting',
-        content: form.content.trim(),
-        status: 'uploaded',
-      })
-      .select()
-      .single()
-
-    if (error || !newTranscript) {
-      setIsProcessingAI(false)
-      showToast('Failed to save transcript', 'error')
-      return
-    }
-
-    const meetingTitle = newTranscript.meeting_title
-    setForm({ meeting_title: '', content: '' })
-    setShowForm(false)
-
-    // Run AI Parsing
-    setAiStepMessage('2. Analyzing with GLM 4.5 Flash & matching team leads…')
-    
     try {
       const res = await fetch('/api/transcripts/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcriptId: newTranscript.id }),
+        body: JSON.stringify({
+          meeting_title: form.meeting_title.trim() || 'Untitled Meeting',
+          content: form.content.trim(),
+        }),
       })
       const result = await res.json()
 
-      if (res.ok && result.tasks) {
-        setAiStepMessage('3. AI Extraction complete! Preparing task review…')
-        await new Promise((r) => setTimeout(r, 600))
+      if (res.ok && result.transcript) {
+        setAiStepMessage('2. AI Extraction complete! Preparing task review…')
+        await new Promise((r) => setTimeout(r, 400))
         setIsProcessingAI(false)
+        setForm({ meeting_title: '', content: '' })
+        setShowForm(false)
 
-        // Automatically open the Review Modal with extracted tasks!
-        const parsedTranscript: Transcript = {
-          ...newTranscript,
-          status: 'reviewed',
-          ai_extracted_tasks: result.tasks,
-        }
-        openReview(parsedTranscript)
-        showToast(`Extracted ${result.tasks.length} action items!`, 'success')
+        openReview(result.transcript)
+        const count = result.tasks?.length ?? 0
+        showToast(`Extracted ${count} action items!`, 'success')
       } else {
         setIsProcessingAI(false)
-        showToast(result.error || 'Failed to parse transcript', 'error')
+        console.error('[Upload & Parse Error]', result.error)
+        showToast(result.error || 'Failed to save or parse transcript', 'error')
       }
-    } catch {
+    } catch (err) {
+      console.error('[Upload & Parse Network Error]', err)
       setIsProcessingAI(false)
       showToast('Error connecting to AI service', 'error')
     } finally {
@@ -116,20 +108,17 @@ export default function TranscriptsPage() {
       })
       const result = await res.json()
 
-      if (res.ok && result.tasks) {
+      if (res.ok && result.transcript) {
         setIsProcessingAI(false)
-        const updatedTranscript: Transcript = {
-          ...t,
-          status: 'reviewed',
-          ai_extracted_tasks: result.tasks,
-        }
-        openReview(updatedTranscript)
-        showToast(`AI extraction complete! (${result.tasks.length} tasks)`, 'success')
+        openReview(result.transcript)
+        const count = result.tasks?.length ?? 0
+        showToast(`AI extraction complete! (${count} tasks)`, 'success')
       } else {
         setIsProcessingAI(false)
         showToast(result.error || 'Failed to parse transcript', 'error')
       }
-    } catch {
+    } catch (err) {
+      console.error('[Parse Existing Error]', err)
       setIsProcessingAI(false)
       showToast('Error parsing transcript', 'error')
     } finally {
@@ -148,25 +137,40 @@ export default function TranscriptsPage() {
     setApplying(true)
     let appliedCount = 0
 
-    for (const task of reviewTasks) {
-      if (!task.title) continue
-      await supabase.from('tasks').insert({
-        title: task.title,
-        description: task.description ?? null,
-        assignee_id: task.assignee_id ?? null,
-        priority: task.priority || 'normal',
-        due_date: task.due_date ?? new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-        status: 'pending',
-        source: 'transcript',
-      })
-      appliedCount++
-    }
+    try {
+      for (const task of reviewTasks) {
+        if (!task.title) continue
+        const res = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: task.title,
+            description: task.description ?? null,
+            assignee_id: task.assignee_id ?? null,
+            priority: task.priority || 'normal',
+            due_date: task.due_date ?? new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+            status: 'pending',
+            source: 'transcript',
+          }),
+        })
+        if (res.ok) appliedCount++
+      }
 
-    await supabase.from('transcripts').update({ status: 'applied' }).eq('id', reviewing.id)
-    setReviewing(null)
-    setApplying(false)
-    showToast(`Successfully created ${appliedCount} tasks! 🎉`, 'success')
-    fetchData()
+      await fetch('/api/transcripts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: reviewing.id, status: 'applied' }),
+      })
+
+      setReviewing(null)
+      showToast(`Successfully created ${appliedCount} tasks! 🎉`, 'success')
+    } catch (err) {
+      console.error('[Apply Tasks Error]', err)
+      showToast('Failed to apply tasks', 'error')
+    } finally {
+      setApplying(false)
+      fetchData()
+    }
   }
 
   const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
