@@ -1,25 +1,32 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { supabase } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
 export default async function OverviewPage() {
+  const client = supabaseAdmin || supabase
+
   const [
     { count: totalTasks },
     { count: doneTasks },
     { count: overdueTasks },
     { count: activeMembers },
   ] = await Promise.all([
-    supabaseAdmin.from('tasks').select('*', { count: 'exact', head: true }),
-    supabaseAdmin.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'done'),
-    supabaseAdmin.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'overdue'),
-    supabaseAdmin.from('team_members').select('*', { count: 'exact', head: true }).eq('is_active', true).eq('is_admin', false),
+    client.from('tasks').select('*', { count: 'exact', head: true }),
+    client.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'done'),
+    client.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'overdue'),
+    client.from('team_members').select('*', { count: 'exact', head: true }).eq('is_active', true),
   ])
 
-  const { data: recentTasks } = await supabaseAdmin
+  const { data: recentTasks, error: recentErr } = await client
     .from('tasks')
-    .select('id, title, status, priority, due_date, team_members(name)')
+    .select('id, title, status, priority, due_date, team_members!assignee_id(name)')
     .order('created_at', { ascending: false })
     .limit(8)
+
+  if (recentErr) {
+    console.error('[Overview Page] Recent tasks query error:', recentErr)
+  }
 
   return (
     <div className="p-4 sm:p-8 max-w-5xl">
