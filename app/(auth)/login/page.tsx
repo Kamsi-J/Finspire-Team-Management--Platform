@@ -14,9 +14,11 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
+    console.log('[login] attempting sign in for:', email)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      setError('Invalid email or password.')
+      console.error('[login] error:', error.message, error.status)
+      setError(error.message)
       setLoading(false)
       return
     }
