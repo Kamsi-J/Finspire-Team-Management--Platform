@@ -1,35 +1,76 @@
-import { supabaseAdmin } from '@/lib/supabase-admin'
+'use client'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import type { Task, TeamMember } from '@/types'
+import { SkeletonCard, SkeletonRow } from '@/components/Skeleton'
 
-export const dynamic = 'force-dynamic'
+type TaskRow = Task & { team_members?: { name: string } }
 
-export default async function OverviewPage() {
-  const client = supabaseAdmin || supabase
+async function apiFetch(path: string) {
+  try {
+    const res = await fetch(path)
+    if (!res.ok) return null
+    return await res.json()
+  } catch {
+    return null
+  }
+}
 
-  const [
-    { count: totalTasks },
-    { count: doneTasks },
-    { count: overdueTasks },
-    { count: activeMembers },
-  ] = await Promise.all([
-    client.from('tasks').select('*', { count: 'exact', head: true }),
-    client.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'done'),
-    client.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'overdue'),
-    client.from('team_members').select('*', { count: 'exact', head: true }).eq('is_active', true),
-  ])
+export default function OverviewPage() {
+  const [tasks, setTasks] = useState<TaskRow[]>([])
+  const [members, setMembers] = useState<TeamMember[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const { data: recentTasks, error: recentErr } = await client
-    .from('tasks')
-    .select('id, title, status, priority, due_date, team_members!assignee_id(name)')
-    .order('created_at', { ascending: false })
-    .limit(8)
+  useEffect(() => {
+    fetchOverviewData()
+  }, [])
 
-  if (recentErr) {
-    console.error('[Overview Page] Recent tasks query error:', recentErr)
+  async function fetchOverviewData() {
+    setLoading(true)
+    try {
+      const [tasksRes, membersRes] = await Promise.all([
+        apiFetch('/api/tasks'),
+        apiFetch('/api/members?active_only=true'),
+      ])
+
+      let loadedTasks: TaskRow[] = Array.isArray(tasksRes) ? tasksRes : []
+      let loadedMembers: TeamMember[] = Array.isArray(membersRes) ? membersRes : []
+
+      // Fallbacks if API returned error/non-array
+      if (loadedTasks.length === 0) {
+        const { data: t } = await supabase
+          .from('tasks')
+          .select('*, team_members!assignee_id(name)')
+          .order('created_at', { ascending: false })
+        if (t && t.length > 0) loadedTasks = t as TaskRow[]
+      }
+
+      if (loadedMembers.length === 0) {
+        const { data: m } = await supabase
+          .from('team_members')
+          .select('*')
+          .eq('is_active', true)
+          .order('name')
+        if (m && m.length > 0) loadedMembers = m
+      }
+
+      setTasks(loadedTasks)
+      setMembers(loadedMembers)
+    } catch (err) {
+      console.error('[Overview Fetch Error]', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
+  const totalTasks = tasks.length
+  const doneTasks = tasks.filter((t) => t.status === 'done').length
+  const overdueTasks = tasks.filter((t) => t.status === 'overdue').length
+  const activeMembers = members.length
+  const recentTasks = tasks.slice(0, 8)
+
   return (
-    <div className="p-4 sm:p-8 max-w-5xl">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <p className="text-[11px] font-mono-code uppercase tracking-widest mb-2" style={{ color: 'var(--neutral)' }}>
@@ -42,12 +83,21 @@ export default async function OverviewPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Total Tasks" value={totalTasks ?? 0} />
-        <StatCard label="Completed" value={doneTasks ?? 0} accent="green" />
-        <StatCard label="Overdue" value={overdueTasks ?? 0} accent="overdue" />
-        <StatCard label="Team Members" value={activeMembers ?? 0} />
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <StatCard label="Total Tasks" value={totalTasks} />
+          <StatCard label="Completed" value={doneTasks} accent="green" />
+          <StatCard label="Overdue" value={overdueTasks} accent="overdue" />
+          <StatCard label="Team Members" value={activeMembers} />
+        </div>
+      )}
 
       {/* Recent tasks */}
       <div
@@ -68,29 +118,41 @@ export default async function OverviewPage() {
           </a>
         </div>
         <div>
-          {(recentTasks ?? []).map((task: any) => (
-            <div
-              key={task.id}
-              className="px-6 py-4 flex items-center justify-between gap-4"
-              style={{ borderBottom: '1px solid var(--border)' }}
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  {task.priority === 'urgent' && (
-                    <span className="text-[10px] font-mono-code font-semibold tracking-wider" style={{ color: 'var(--brand)' }}>
-                      URGENT
-                    </span>
-                  )}
-                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>{task.title}</p>
-                </div>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-3)' }}>
-                  <span className="font-bold text-[var(--text)]">👤 {task.team_members?.name ?? 'Unassigned'}</span> · Due {task.due_date}
-                </p>
-              </div>
-              <StatusChip status={task.status} />
+          {loading && (
+            <div>
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
             </div>
-          ))}
-          {!recentTasks?.length && (
+          )}
+
+          {!loading && recentTasks.map((task: any) => {
+            const assigneeName = task.team_members?.name ?? 'Unassigned'
+            return (
+              <div
+                key={task.id}
+                className="px-6 py-4 flex items-center justify-between gap-4"
+                style={{ borderBottom: '1px solid var(--border)' }}
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    {task.priority === 'urgent' && (
+                      <span className="text-[10px] font-mono-code font-semibold tracking-wider" style={{ color: 'var(--brand)' }}>
+                        URGENT
+                      </span>
+                    )}
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>{task.title}</p>
+                  </div>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-3)' }}>
+                    <span className="font-bold text-[var(--text)]">👤 {assigneeName}</span> · Due {task.due_date}
+                  </p>
+                </div>
+                <StatusChip status={task.status} />
+              </div>
+            )
+          })}
+
+          {!loading && recentTasks.length === 0 && (
             <div className="px-6 py-10 text-center text-sm" style={{ color: 'var(--text-3)' }}>
               No tasks yet. <a href="/tasks" style={{ color: 'var(--brand)' }}>Create your first task →</a>
             </div>

@@ -17,10 +17,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState<{ name: string; role: string; email: string } | null>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) router.replace('/login')
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) {
+        router.replace('/login')
+        return
+      }
+      try {
+        const { data: member } = await supabase
+          .from('team_members')
+          .select('name, role, email')
+          .eq('email', user.email)
+          .maybeSingle()
+
+        if (member) {
+          setCurrentUser({ name: member.name, role: member.role, email: member.email })
+        } else {
+          const fallbackName = user.email ? user.email.split('@')[0] : 'Team Lead'
+          setCurrentUser({ name: fallbackName, role: 'Admin', email: user.email ?? '' })
+        }
+      } catch (err) {
+        console.error('[Layout Auth Error]', err)
+        const fallbackName = user.email ? user.email.split('@')[0] : 'Team Lead'
+        setCurrentUser({ name: fallbackName, role: 'Admin', email: user.email ?? '' })
+      }
     })
   }, [router])
 
@@ -82,11 +104,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         })}
       </nav>
 
-      {/* Sign out */}
-      <div className="px-3 py-4" style={{ borderTop: '1px solid var(--charcoal-3)' }}>
+      {/* User profile & Sign out */}
+      <div className="px-3 py-3" style={{ borderTop: '1px solid var(--charcoal-3)' }}>
+        {currentUser && (
+          <div className="flex items-center gap-2.5 px-3 py-2 mb-2 rounded-lg" style={{ background: 'var(--charcoal-3)' }}>
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs text-white flex-shrink-0"
+              style={{ background: 'var(--brand)' }}
+            >
+              {currentUser.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-white text-xs font-semibold truncate leading-snug">
+                {currentUser.name}
+              </p>
+              <p className="text-[10px] capitalize truncate leading-tight" style={{ color: 'var(--neutral)' }}>
+                {currentUser.role}
+              </p>
+            </div>
+          </div>
+        )}
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[13px] transition-colors text-left"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13px] transition-colors text-left"
           style={{ color: 'var(--neutral)' }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'var(--charcoal-3)'
