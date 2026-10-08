@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { sendTemplateMessage } from '@/lib/whatsapp'
+import { sendTemplateMessage, buildMeetingNotificationText } from '@/lib/whatsapp'
+import { sendTelegramMessage } from '@/lib/telegram'
 
 export async function POST(req: NextRequest) {
   const { meetingId } = await req.json()
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
 
   const { data: members } = await supabaseAdmin
     .from('team_members')
-    .select('name, whatsapp_number')
+    .select('name, whatsapp_number, telegram_chat_id')
     .eq('is_active', true)
     .eq('is_admin', false)
 
@@ -26,13 +27,20 @@ export async function POST(req: NextRequest) {
     hour: '2-digit', minute: '2-digit',
   })
 
-  // Extract room code from Google Meet URL (last path segment)
   const meetRoomCode = meeting.join_link
     ? meeting.join_link.replace(/^https?:\/\/meet\.google\.com\//, '').replace(/\/$/, '')
     : null
 
-  const results = await Promise.allSettled(
-    members.map((m) => {
+  const telegramText = buildMeetingNotificationText(
+    meeting.title,
+    formattedDate,
+    meeting.join_link,
+    meeting.description
+  )
+
+  const sends: Promise<unknown>[] = []
+  for (const m of members) {
+    if (m.whatsapp_number) {
       const components: object[] = [
         {
           type: 'body',
@@ -43,7 +51,6 @@ export async function POST(req: NextRequest) {
           ],
         },
       ]
-      // Only attach the URL button component if there's a Meet link
       if (meetRoomCode) {
         components.push({
           type: 'button',
@@ -52,10 +59,14 @@ export async function POST(req: NextRequest) {
           parameters: [{ type: 'text', text: meetRoomCode }],
         })
       }
-      return sendTemplateMessage(m.whatsapp_number, 'meeting_notification', 'en', components)
-    })
-  )
+      sends.push(sendTemplateMessage(m.whatsapp_number, 'meeting_notification', 'en', components))
+    }
+    if (m.telegram_chat_id) {
+      sends.push(sendTelegramMessage(m.telegram_chat_id, `Hi ${m.name}!\n\n${telegramText}`))
+    }
+  }
 
+  const results = await Promise.allSettled(sends)
   const sent = results.filter((r) => r.status === 'fulfilled').length
 
   return NextResponse.json({ sent, total: members.length })

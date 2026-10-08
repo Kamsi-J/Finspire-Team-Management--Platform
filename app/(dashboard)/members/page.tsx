@@ -10,7 +10,7 @@ type OpenMenu = string | null
 export default function MembersPage() {
   const [members, setMembers] = useState<TeamMember[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', role: '', whatsapp_number: '', email: '', is_admin: false })
+  const [form, setForm] = useState({ name: '', role: '', whatsapp_number: '', telegram_chat_id: '', email: '', is_admin: false })
   const [saving, setSaving] = useState(false)
   const [loginForm, setLoginForm] = useState<LoginForm | null>(null)
   const [loginSaving, setLoginSaving] = useState(false)
@@ -57,7 +57,7 @@ export default function MembersPage() {
       console.error('[Save Member Error]', err)
       await supabase.from('team_members').insert({ ...form, whatsapp_number: number })
     }
-    setForm({ name: '', role: '', whatsapp_number: '', email: '', is_admin: false })
+    setForm({ name: '', role: '', whatsapp_number: '', telegram_chat_id: '', email: '', is_admin: false })
     setShowForm(false)
     setSaving(false)
     fetchMembers()
@@ -118,7 +118,7 @@ export default function MembersPage() {
         <div>
           <p className="text-[11px] font-mono-code uppercase tracking-widest mb-2" style={{ color: 'var(--neutral)' }}>People</p>
           <h1 className="font-display font-bold text-[28px] leading-tight" style={{ color: 'var(--text)', letterSpacing: '-0.02em' }}>Team</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>{members.length} members · add WhatsApp numbers here</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>{members.length} members · add WhatsApp & Telegram IDs here</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
@@ -168,6 +168,19 @@ export default function MembersPage() {
                   placeholder="2348012345678"
                 />
                 <p className="text-[11px] mt-1" style={{ color: 'var(--text-3)' }}>Country code, no + or spaces</p>
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>
+                  Telegram Chat ID
+                </label>
+                <input
+                  value={form.telegram_chat_id}
+                  onChange={(e) => setForm({ ...form, telegram_chat_id: e.target.value })}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none font-mono-code"
+                  style={inputStyle}
+                  placeholder="5604614054"
+                />
+                <p className="text-[11px] mt-1" style={{ color: 'var(--text-3)' }}>From /start on @Finspire_Team_Bot</p>
               </div>
               <div>
                 <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Email</label>
@@ -333,6 +346,12 @@ export default function MembersPage() {
                 </div>
                 <p className="text-xs truncate" style={{ color: 'var(--text-3)' }}>
                   {m.role} · <span className="font-mono-code">{m.whatsapp_number}</span>
+                  {(m as any).telegram_chat_id && (
+                    <span className="inline-flex items-center gap-0.5 ml-1.5">
+                      <span className="material-symbols-outlined text-[11px]" style={{ color: '#2CA5E0' }}>send</span>
+                      <span className="font-mono-code" style={{ color: '#2CA5E0' }}>{(m as any).telegram_chat_id}</span>
+                    </span>
+                  )}
                   {m.email && <> · {m.email}</>}
                 </p>
               </div>

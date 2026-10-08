@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendTextMessage } from '@/lib/whatsapp'
+import { sendTelegramMessage } from '@/lib/telegram'
 
 export async function POST(req: NextRequest) {
   const { message } = await req.json()
@@ -8,21 +9,24 @@ export async function POST(req: NextRequest) {
 
   const { data: members } = await supabaseAdmin
     .from('team_members')
-    .select('whatsapp_number')
+    .select('whatsapp_number, telegram_chat_id')
     .eq('is_active', true)
     .eq('is_admin', false)
 
   if (!members) return NextResponse.json({ error: 'No members' }, { status: 500 })
 
-  const results = await Promise.allSettled(
-    members.map((m) => sendTextMessage(m.whatsapp_number, message))
-  )
+  const sends: Promise<unknown>[] = []
+  for (const m of members) {
+    if (m.whatsapp_number) sends.push(sendTextMessage(m.whatsapp_number, message))
+    if (m.telegram_chat_id) sends.push(sendTelegramMessage(m.telegram_chat_id, message))
+  }
 
+  const results = await Promise.allSettled(sends)
   const sent = results.filter((r) => r.status === 'fulfilled').length
 
   await supabaseAdmin.from('broadcasts').insert({
     message,
-    recipient_count: sent,
+    recipient_count: members.length,
   })
 
   return NextResponse.json({ sent, total: members.length })

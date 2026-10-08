@@ -8,6 +8,7 @@ export interface TeamMember {
   name: string
   role: string
   whatsapp_number: string
+  telegram_chat_id?: string
   email?: string
   is_admin: boolean
   is_active: boolean
