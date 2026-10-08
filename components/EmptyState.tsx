@@ -9,7 +9,7 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({
-  icon = '✨',
+  icon = 'inbox',
   title,
   description,
   actionLabel,
@@ -17,7 +17,7 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className="p-10 text-center flex flex-col items-center justify-center">
-      <span className="text-3xl mb-3 select-none">{icon}</span>
+      <span className="material-symbols-outlined mb-3 select-none" style={{ fontSize: '40px', color: 'var(--neutral)' }}>{icon}</span>
       <h3 className="text-sm font-semibold text-[var(--text,#18181B)]">{title}</h3>
       {description && (
         <p className="text-xs text-[var(--text-3,#A1A1AA)] mt-1 max-w-xs">{description}</p>

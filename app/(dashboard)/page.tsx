@@ -143,8 +143,12 @@ export default function OverviewPage() {
                     )}
                     <p className="text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>{task.title}</p>
                   </div>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-3)' }}>
-                    <span className="font-bold text-[var(--text)]">👤 {assigneeName}</span> · Due {task.due_date}
+                  <p className="text-xs mt-0.5 flex items-center gap-1 flex-wrap" style={{ color: 'var(--text-3)' }}>
+                    <span className="font-bold inline-flex items-center gap-1" style={{ color: 'var(--text)' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '13px', fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>person</span>
+                      {assigneeName}
+                    </span>
+                    <span>· Due {task.due_date}</span>
                   </p>
                 </div>
                 <StatusChip status={task.status} />

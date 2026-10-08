@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Transcript, ExtractedTask, TeamMember } from '@/types'
@@ -253,7 +253,7 @@ export default function TranscriptsPage() {
                 className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 flex items-center gap-2 shadow-xs"
                 style={{ background: 'var(--brand)' }}
               >
-                <span>✨</span> Upload & Extract Tasks with AI
+                <span className="material-symbols-outlined text-[16px]">auto_fix_high</span> Upload & Extract Tasks with AI
               </button>
             </div>
           </form>
@@ -268,7 +268,7 @@ export default function TranscriptsPage() {
             style={{ background: 'var(--card)', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: '1px solid var(--border)' }}
           >
             <div className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center animate-bounce" style={{ background: 'var(--brand-light)' }}>
-              <span className="text-2xl">⚡</span>
+              <span className="material-symbols-outlined text-[28px]" style={{ color: 'var(--brand)' }}>bolt</span>
             </div>
             <div>
               <h3 className="font-display font-bold text-lg text-[var(--text)]">GLM 4.5 Flash AI Processing</h3>
@@ -427,7 +427,7 @@ export default function TranscriptsPage() {
         {!loading && transcripts.length === 0 && (
           <div className="rounded-xl border border-[var(--border)] bg-[var(--card)]">
             <EmptyState
-              icon="🎙️"
+              icon="mic"
               title="No meeting transcripts uploaded yet"
               description="Upload meeting notes to let GLM 4.5 Flash automatically extract tasks and map them to team leads."
               actionLabel="+ Upload First Transcript"

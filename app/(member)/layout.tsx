@@ -37,7 +37,7 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
             className="flex items-center gap-3 px-3 py-2.5 rounded-md text-[13px] font-medium"
             style={{ background: 'var(--brand)', color: '#fff' }}
           >
-            <span className="text-[11px] w-4 text-center opacity-70 font-mono-code">✓</span>
+            <span className="material-symbols-outlined text-[18px] w-5 text-center flex-shrink-0 opacity-80">task_alt</span>
             My Tasks
           </div>
         </nav>
@@ -50,7 +50,7 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
             onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--charcoal-3)'; e.currentTarget.style.color = '#fff' }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--neutral)' }}
           >
-            <span className="text-[11px] w-4 text-center font-mono-code">↗</span>
+            <span className="material-symbols-outlined text-[18px] w-5 text-center flex-shrink-0">logout</span>
             Sign out
           </button>
         </div>

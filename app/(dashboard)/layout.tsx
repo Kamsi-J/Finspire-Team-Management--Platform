@@ -5,12 +5,12 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const nav = [
-  { href: '/',            label: 'Overview',     icon: '▦' },
-  { href: '/tasks',       label: 'Tasks',        icon: '✓' },
-  { href: '/transcripts', label: 'Transcripts',  icon: '↑' },
-  { href: '/members',     label: 'Team',         icon: '○' },
-  { href: '/meetings',    label: 'Meetings',     icon: '◷' },
-  { href: '/broadcast',   label: 'Broadcast',    icon: '◈' },
+  { href: '/',            label: 'Overview',     icon: 'grid_view' },
+  { href: '/tasks',       label: 'Tasks',        icon: 'task_alt' },
+  { href: '/transcripts', label: 'Transcripts',  icon: 'article' },
+  { href: '/members',     label: 'Team',         icon: 'group' },
+  { href: '/meetings',    label: 'Meetings',     icon: 'event' },
+  { href: '/broadcast',   label: 'Broadcast',    icon: 'campaign' },
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -97,7 +97,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 }
               }}
             >
-              <span className="text-[11px] w-4 text-center opacity-70 font-mono-code">{item.icon}</span>
+              <span className="material-symbols-outlined text-[18px] w-5 text-center flex-shrink-0 opacity-80">{item.icon}</span>
               {item.label}
             </Link>
           )
@@ -137,7 +137,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             e.currentTarget.style.color = 'var(--neutral)'
           }}
         >
-          <span className="text-[11px] w-4 text-center font-mono-code">↗</span>
+          <span className="material-symbols-outlined text-[18px] w-5 text-center flex-shrink-0">logout</span>
           Sign out
         </button>
       </div>

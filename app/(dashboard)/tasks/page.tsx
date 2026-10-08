@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Task, TaskStatus, TeamMember } from '@/types'
@@ -562,7 +562,7 @@ export default function TasksPage() {
 
         {!loading && tasks.length === 0 && (
           <EmptyState
-            icon="📝"
+            icon="task_alt"
             title="No tasks match the selected filter"
             description="Create a new task or adjust your status/member filters above."
             actionLabel="+ New Task"
@@ -604,8 +604,9 @@ export default function TasksPage() {
                   </p>
                 )}
                 <p className="text-xs flex items-center gap-1 flex-wrap" style={{ color: task.status === 'overdue' ? '#E57373' : 'var(--text-3)' }}>
-                  <span className="font-bold text-[var(--text)]" style={{ color: task.status === 'overdue' ? '#BE123C' : 'var(--text)' }}>
-                    👤 {(task as any).team_members?.name ?? 'Unassigned'}
+                  <span className="font-bold inline-flex items-center gap-1" style={{ color: task.status === 'overdue' ? '#BE123C' : 'var(--text)' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '12px', fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>person</span>
+                    {(task as any).team_members?.name ?? 'Unassigned'}
                   </span>
                   <span className="mx-0.5 text-gray-400">•</span>
                   <span>Due {task.due_date}</span>
@@ -648,7 +649,7 @@ export default function TasksPage() {
                         >
                           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: cfg.dot }} />
                           {cfg.label}
-                          {isActive && <span className="ml-auto" style={{ color: cfg.dot }}>✓</span>}
+                          {isActive && <span className="material-symbols-outlined ml-auto" style={{ fontSize: '14px', color: cfg.dot, fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>check</span>}
                         </button>
                       )
                     })}

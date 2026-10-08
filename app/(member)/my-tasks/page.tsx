@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Task, TeamMember } from '@/types'
@@ -126,7 +126,7 @@ export default function MyTasksPage() {
 
         {!loading && tasks.length === 0 && (
           <EmptyState
-            icon={filter === 'done' ? '🎯' : '🎉'}
+            icon={filter === 'done' ? 'task_alt' : 'check_circle'}
             title={filter === 'done' ? 'No completed tasks yet' : "You're all caught up!"}
             description={filter === 'done' ? 'Tasks you mark as done will appear here.' : 'No tasks pending under this view.'}
           />
