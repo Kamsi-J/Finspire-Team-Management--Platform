@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import NotificationBell from '@/components/NotificationBell'
 
 const nav = [
   { href: '/',            label: 'Overview',     icon: 'grid_view' },
@@ -62,10 +63,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             <span className="font-display font-bold text-white text-sm leading-none">F</span>
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="text-white text-[13px] font-semibold leading-tight tracking-tight">Finspire</p>
             <p className="text-[11px] leading-tight" style={{ color: 'var(--neutral)' }}>Team OS</p>
           </div>
+          <NotificationBell />
         </div>
       </div>
 
@@ -170,7 +172,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="block w-5 h-0.5 bg-white rounded-full" />
             <span className="block w-5 h-0.5 bg-white rounded-full" />
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1">
             <div
               className="w-6 h-6 rounded flex items-center justify-center"
               style={{ background: 'var(--brand)' }}
@@ -180,6 +182,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="text-white text-[13px] font-semibold tracking-tight">Finspire</span>
             <span className="text-[11px]" style={{ color: 'var(--neutral)' }}>Team OS</span>
           </div>
+          <NotificationBell />
         </header>
 
         {/* Page content */}
