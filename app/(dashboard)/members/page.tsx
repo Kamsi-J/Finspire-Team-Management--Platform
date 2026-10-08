@@ -10,7 +10,7 @@ type OpenMenu = string | null
 export default function MembersPage() {
   const [members, setMembers] = useState<TeamMember[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', role: '', whatsapp_number: '', telegram_chat_id: '', email: '', is_admin: false, preferred_platform: 'both', password: '' })
+  const [form, setForm] = useState({ name: '', role: '', whatsapp_number: '', telegram_chat_id: '', email: '', is_admin: false, preferred_platform: 'whatsapp', password: '' })
   const [saving, setSaving] = useState(false)
   const [loginForm, setLoginForm] = useState<LoginForm | null>(null)
   const [loginSaving, setLoginSaving] = useState(false)
@@ -57,7 +57,7 @@ export default function MembersPage() {
       console.error('[Save Member Error]', err)
       await supabase.from('team_members').insert({ ...form, whatsapp_number: number })
     }
-    setForm({ name: '', role: '', whatsapp_number: '', telegram_chat_id: '', email: '', is_admin: false, preferred_platform: 'both', password: '' })
+    setForm({ name: '', role: '', whatsapp_number: '', telegram_chat_id: '', email: '', is_admin: false, preferred_platform: 'whatsapp', password: '' })
     setShowForm(false)
     setSaving(false)
     fetchMembers()
@@ -210,9 +210,8 @@ export default function MembersPage() {
                 <label className="block text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--neutral)' }}>Messaging Platform</label>
                 <div className="flex gap-2">
                   {[
-                    { value: 'both', label: 'WhatsApp + Telegram' },
-                    { value: 'whatsapp', label: 'WhatsApp only' },
-                    { value: 'telegram', label: 'Telegram only' },
+                    { value: 'whatsapp', label: 'WhatsApp' },
+                    { value: 'telegram', label: 'Telegram' },
                   ].map(({ value, label }) => (
                     <button
                       key={value}

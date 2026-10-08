@@ -17,9 +17,9 @@ export async function POST(req: NextRequest) {
 
   const sends: Promise<unknown>[] = []
   for (const m of members) {
-    const platform = (m as any).preferred_platform ?? 'both'
-    if (m.whatsapp_number && platform !== 'telegram') sends.push(sendTextMessage(m.whatsapp_number, message))
-    if ((m as any).telegram_chat_id && platform !== 'whatsapp') sends.push(sendTelegramMessage((m as any).telegram_chat_id, message))
+    const platform = (m as any).preferred_platform ?? 'whatsapp'
+    if (platform === 'whatsapp' && m.whatsapp_number) sends.push(sendTextMessage(m.whatsapp_number, message))
+    if (platform === 'telegram' && (m as any).telegram_chat_id) sends.push(sendTelegramMessage((m as any).telegram_chat_id, message))
   }
 
   const results = await Promise.allSettled(sends)
