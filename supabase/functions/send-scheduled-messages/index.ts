@@ -33,7 +33,6 @@ async function sendDailyTaskBoards() {
     .from('team_members')
     .select('*')
     .eq('is_active', true)
-    .eq('is_admin', false)
 
   if (!members) return
 
