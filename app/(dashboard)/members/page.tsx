@@ -10,7 +10,7 @@ type OpenMenu = string | null
 export default function MembersPage() {
   const [members, setMembers] = useState<TeamMember[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', role: '', whatsapp_number: '', telegram_chat_id: '', email: '', is_admin: false })
+  const [form, setForm] = useState({ name: '', role: '', whatsapp_number: '', telegram_chat_id: '', email: '', is_admin: false, preferred_platform: 'both', password: '' })
   const [saving, setSaving] = useState(false)
   const [loginForm, setLoginForm] = useState<LoginForm | null>(null)
   const [loginSaving, setLoginSaving] = useState(false)
@@ -57,7 +57,7 @@ export default function MembersPage() {
       console.error('[Save Member Error]', err)
       await supabase.from('team_members').insert({ ...form, whatsapp_number: number })
     }
-    setForm({ name: '', role: '', whatsapp_number: '', telegram_chat_id: '', email: '', is_admin: false })
+    setForm({ name: '', role: '', whatsapp_number: '', telegram_chat_id: '', email: '', is_admin: false, preferred_platform: 'both', password: '' })
     setShowForm(false)
     setSaving(false)
     fetchMembers()
@@ -192,6 +192,44 @@ export default function MembersPage() {
                   style={inputStyle}
                   placeholder="temi@finspire.co"
                 />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--neutral)' }}>Portal Password</label>
+                <input
+                  type="password"
+                  minLength={6}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none"
+                  style={inputStyle}
+                  placeholder="Leave blank to set later"
+                />
+                <p className="text-[11px] mt-1" style={{ color: 'var(--text-3)' }}>Min 6 chars · Creates their portal login immediately</p>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--neutral)' }}>Messaging Platform</label>
+                <div className="flex gap-2">
+                  {[
+                    { value: 'both', label: 'WhatsApp + Telegram' },
+                    { value: 'whatsapp', label: 'WhatsApp only' },
+                    { value: 'telegram', label: 'Telegram only' },
+                  ].map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setForm({ ...form, preferred_platform: value })}
+                      className="px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                      style={{
+                        background: form.preferred_platform === value ? 'var(--brand)' : 'var(--canvas)',
+                        color: form.preferred_platform === value ? 'white' : 'var(--text-2)',
+                        border: `1px solid ${form.preferred_platform === value ? 'var(--brand)' : 'var(--border)'}`,
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] mt-1.5" style={{ color: 'var(--text-3)' }}>Determines which channel bot messages are sent through</p>
               </div>
             </div>
             <div className="mt-4 flex items-center gap-2.5">
@@ -335,6 +373,18 @@ export default function MembersPage() {
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
                       style={{ background: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
                       Login set
+                    </span>
+                  )}
+                  {(m as any).preferred_platform === 'telegram' && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                      style={{ background: '#E8F4FB', color: '#2CA5E0', border: '1px solid #BDE4F5' }}>
+                      TG only
+                    </span>
+                  )}
+                  {(m as any).preferred_platform === 'whatsapp' && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                      style={{ background: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
+                      WA only
                     </span>
                   )}
                   {!m.is_active && (

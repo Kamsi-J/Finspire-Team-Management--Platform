@@ -31,9 +31,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { data, error } = await supabaseAdmin
+    const { password, ...memberData } = body
+
+    const { data: member, error } = await supabaseAdmin
       .from('team_members')
-      .insert(body)
+      .insert(memberData)
       .select()
       .single()
 
@@ -42,7 +44,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
-    return NextResponse.json(data)
+    if (password && memberData.email) {
+      const { error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: memberData.email,
+        password,
+        user_metadata: { name: memberData.name, role: memberData.role },
+        email_confirm: true,
+      })
+      if (authError) console.error('[Members API] Auth user creation error:', authError)
+    }
+
+    return NextResponse.json(member)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal Server Error'
     return NextResponse.json({ error: message }, { status: 500 })

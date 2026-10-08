@@ -59,8 +59,10 @@ async function sendDailyTaskBoards() {
       (t) => t.status !== 'overdue' && t.due_date > in24hStr
     )
 
+    const platform = member.preferred_platform ?? 'both'
+
     // WhatsApp template (uses pre-approved template)
-    if (member.whatsapp_number) {
+    if (member.whatsapp_number && platform !== 'telegram') {
       const activeText = active.length > 0
         ? active.map((t) => `• ${t.title} — due ${t.due_date}`).join('\n')
         : '• —'
@@ -82,7 +84,7 @@ async function sendDailyTaskBoards() {
     }
 
     // Telegram plain text
-    if (member.telegram_chat_id) {
+    if (member.telegram_chat_id && platform !== 'whatsapp') {
       const text = buildTaskBoardText(member.name, active, dueSoon, overdue)
       await sendTgMessage(member.telegram_chat_id, text)
     }
@@ -148,7 +150,8 @@ async function sendPerformanceReport() {
     : 'No data yet'
 
   for (const admin of admins) {
-    if (admin.whatsapp_number) {
+    const adminPlatform = (admin as any).preferred_platform ?? 'both'
+    if (admin.whatsapp_number && adminPlatform !== 'telegram') {
       await sendWaTemplate(admin.whatsapp_number, 'weekly_digest', [
         { type: 'body', parameters: [
           { type: 'text', text: weekLabel },
@@ -159,7 +162,7 @@ async function sendPerformanceReport() {
         ]},
       ])
     }
-    if (admin.telegram_chat_id) {
+    if (admin.telegram_chat_id && adminPlatform !== 'whatsapp') {
       const text = [
         `📊 *Weekly Performance Report*`,
         `_${weekLabel}_`,

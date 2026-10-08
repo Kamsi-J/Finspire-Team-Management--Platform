@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
 
   const sends: Promise<unknown>[] = []
   for (const m of members) {
-    if (m.whatsapp_number) {
+    const platform = (m as any).preferred_platform ?? 'both'
+    if (m.whatsapp_number && platform !== 'telegram') {
       const components: object[] = [
         {
           type: 'body',
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
       }
       sends.push(sendTemplateMessage(m.whatsapp_number, 'meeting_notification', 'en', components))
     }
-    if (m.telegram_chat_id) {
+    if (m.telegram_chat_id && platform !== 'whatsapp') {
       sends.push(sendTelegramMessage(m.telegram_chat_id, `Hi ${m.name}!\n\n${telegramText}`))
     }
   }
