@@ -78,24 +78,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               key={item.href}
               href={item.href}
               onClick={() => setSidebarOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-[13px] font-medium transition-colors"
-              style={
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-[13px] font-medium transition-colors ${
                 active
-                  ? { background: 'var(--brand)', color: '#fff' }
-                  : { color: '#A1A1AA' }
-              }
-              onMouseEnter={(e) => {
-                if (!active) {
-                  e.currentTarget.style.background = 'var(--charcoal-3)'
-                  e.currentTarget.style.color = '#fff'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!active) {
-                  e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.color = '#A1A1AA'
-                }
-              }}
+                  ? 'bg-brand text-white'
+                  : 'text-[#A1A1AA] hover:bg-charcoal-3 hover:text-white'
+              }`}
             >
               <span className="material-symbols-outlined text-[18px] w-5 text-center flex-shrink-0 opacity-80">{item.icon}</span>
               {item.label}
@@ -126,16 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13px] transition-colors text-left"
-          style={{ color: 'var(--neutral)' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--charcoal-3)'
-            e.currentTarget.style.color = '#fff'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = 'var(--neutral)'
-          }}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13px] transition-colors text-left text-[var(--neutral)] hover:bg-charcoal-3 hover:text-white"
         >
           <span className="material-symbols-outlined text-[18px] w-5 text-center flex-shrink-0">logout</span>
           Sign out

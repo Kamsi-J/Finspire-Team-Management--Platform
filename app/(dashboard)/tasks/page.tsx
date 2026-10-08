@@ -604,8 +604,13 @@ export default function TasksPage() {
                   </p>
                 )}
                 <p className="text-xs flex items-center gap-1 flex-wrap" style={{ color: task.status === 'overdue' ? '#E57373' : 'var(--text-3)' }}>
-                  <span className="font-bold inline-flex items-center gap-1" style={{ color: task.status === 'overdue' ? '#BE123C' : 'var(--text)' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '12px', fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>person</span>
+                  <span className="font-bold inline-flex items-center gap-1.5" style={{ color: task.status === 'overdue' ? '#BE123C' : 'var(--text)' }}>
+                    <span
+                      className="inline-flex items-center justify-center rounded-full text-[9px] font-bold text-white flex-shrink-0 leading-none"
+                      style={{ width: '16px', height: '16px', background: task.status === 'overdue' ? '#BE123C' : 'var(--brand)' }}
+                    >
+                      {((task as any).team_members?.name?.charAt(0) || 'U').toUpperCase()}
+                    </span>
                     {(task as any).team_members?.name ?? 'Unassigned'}
                   </span>
                   <span className="mx-0.5 text-gray-400">•</span>

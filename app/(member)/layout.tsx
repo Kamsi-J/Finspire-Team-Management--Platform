@@ -45,10 +45,7 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
         <div className="px-3 py-4" style={{ borderTop: '1px solid var(--charcoal-3)' }}>
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[13px] transition-colors text-left"
-            style={{ color: 'var(--neutral)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--charcoal-3)'; e.currentTarget.style.color = '#fff' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--neutral)' }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[13px] transition-colors text-left text-[var(--neutral)] hover:bg-charcoal-3 hover:text-white"
           >
             <span className="material-symbols-outlined text-[18px] w-5 text-center flex-shrink-0">logout</span>
             Sign out
