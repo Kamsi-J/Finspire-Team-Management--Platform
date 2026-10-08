@@ -422,17 +422,15 @@ export default function MembersPage() {
                   className="absolute right-0 top-full mt-1 w-44 rounded-xl overflow-hidden z-30"
                   style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
                 >
-                  {!m.is_admin && (
-                    <button
-                      onClick={() => { setOpenMenu(null); setLoginForm({ memberId: m.id, email: m.email ?? '', password: '' }); setLoginError('') }}
-                      className="w-full text-left px-4 py-2.5 text-sm transition-colors"
-                      style={{ color: 'var(--text)' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--canvas)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-                    >
-                      {m.email ? 'Update Login' : 'Set Login'}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => { setOpenMenu(null); setLoginForm({ memberId: m.id, email: m.email ?? '', password: '' }); setLoginError('') }}
+                    className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+                    style={{ color: 'var(--text)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--canvas)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    {m.email ? 'Update Login' : 'Set Login'}
+                  </button>
                   <button
                     onClick={() => { setOpenMenu(null); toggleActive(m.id, m.is_active) }}
                     className="w-full text-left px-4 py-2.5 text-sm transition-colors"
