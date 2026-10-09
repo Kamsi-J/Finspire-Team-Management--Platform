@@ -7,12 +7,49 @@ export interface ParseResult {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+function detectTranscriptFormat(content: string): { valid: boolean; error?: string } {
+  const lines = content.split('\n').filter((l) => l.trim())
+  const wordCount = content.split(/\s+/).length
+
+  // Raw transcript signals: line-starting timestamps or "Speaker: text" patterns
+  const hasTimestamps = /^\s*[\[(]?\d{1,2}:\d{2}/m.test(content)
+  const hasSpeakerLabels = /^[A-ZÀ-ÖØ-öa-z][a-zA-ZÀ-ÖØ-ö\s]{1,30}:\s+\S/m.test(content)
+  const looksRaw = hasTimestamps || hasSpeakerLabels
+
+  // Summary signals: majority of lines are bullet points with no raw transcript signals
+  const bulletLines = lines.filter((l) => /^[-•*]\s+/.test(l)).length
+  const bulletRatio = bulletLines / Math.max(lines.length, 1)
+  const looksSummary = bulletRatio > 0.4 && !looksRaw
+
+  if (looksSummary) {
+    return {
+      valid: false,
+      error:
+        'This looks like a meeting summary, not a raw transcript. Please paste the original transcript with speaker names and timestamps (e.g. from Otter, Zoom, or Google Meet) so GLM can properly identify who said what and extract action items.',
+    }
+  }
+
+  if (wordCount < 50) {
+    return {
+      valid: false,
+      error: 'Transcript is too short to extract tasks from. Please paste the full meeting transcript.',
+    }
+  }
+
+  return { valid: true }
+}
+
 export async function parseTranscript(
   transcript: string,
   teamMembers: TeamMember[],
   maxRetries = 3,
   initialDelayMs = 1000
 ): Promise<ParseResult> {
+  const formatCheck = detectTranscriptFormat(transcript)
+  if (!formatCheck.valid) {
+    return { tasks: [], error: formatCheck.error }
+  }
+
   const apiKey = process.env.GLM_API_KEY || process.env.ANTHROPIC_API_KEY
 
   if (!apiKey) {

@@ -237,7 +237,7 @@ export default function TranscriptsPage() {
                 rows={9}
                 className="w-full px-3.5 py-2.5 rounded-lg text-sm focus:outline-none resize-none font-mono-code focus:ring-1 focus:ring-[var(--brand)]"
                 style={{ ...inputStyle, fontSize: '12px' }}
-                placeholder="Paste Otter, Zoom, or raw meeting notes here. GLM 4.5 Flash will identify team leads and extract all action items…"
+                placeholder="Paste a raw transcript here (from Otter, Zoom, Google Meet, etc.). It should include speaker names and timestamps — not a summary or bullet-point recap. GLM 4.5 Flash will identify team leads and extract all action items."
               />
             </div>
             <div className="flex justify-end gap-3 pt-2">
@@ -302,7 +302,13 @@ export default function TranscriptsPage() {
 
             <div className="p-6 space-y-4 overflow-y-auto flex-1">
               {reviewTasks.length === 0 && (
-                <p className="text-center text-sm text-[var(--text-3)] py-8">No tasks extracted. You can manually add tasks or close this window.</p>
+                <div className="text-center py-10 space-y-2">
+                  <span className="material-symbols-outlined text-[32px] text-[var(--neutral)]">search_off</span>
+                  <p className="text-sm font-semibold text-[var(--text-2)]">No action items found</p>
+                  <p className="text-xs text-[var(--text-3)] max-w-sm mx-auto leading-relaxed">
+                    GLM couldn&apos;t extract tasks from this transcript. Make sure you&apos;re pasting a <strong>raw transcript</strong> with speaker names and timestamps — not a summary or bullet-point recap.
+                  </p>
+                </div>
               )}
 
               {reviewTasks.map((task, i) => (
