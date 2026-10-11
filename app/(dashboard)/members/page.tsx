@@ -77,6 +77,15 @@ export default function MembersPage() {
     fetchMembers()
   }
 
+  async function changePlatform(id: string, platform: 'whatsapp' | 'telegram') {
+    await fetch('/api/members', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, preferred_platform: platform }),
+    })
+    fetchMembers()
+  }
+
   async function createLogin(e: React.FormEvent) {
     e.preventDefault()
     if (!loginForm) return
@@ -440,6 +449,29 @@ export default function MembersPage() {
                   >
                     {m.is_active ? 'Deactivate' : 'Activate'}
                   </button>
+                  <div style={{ borderTop: '1px solid var(--border)' }} />
+                  {(m as any).preferred_platform !== 'telegram' && (
+                    <button
+                      onClick={() => { setOpenMenu(null); changePlatform(m.id, 'telegram') }}
+                      className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+                      style={{ color: 'var(--text)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--canvas)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      Switch to Telegram
+                    </button>
+                  )}
+                  {(m as any).preferred_platform === 'telegram' && (
+                    <button
+                      onClick={() => { setOpenMenu(null); changePlatform(m.id, 'whatsapp') }}
+                      className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+                      style={{ color: 'var(--text)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--canvas)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      Switch to WhatsApp
+                    </button>
+                  )}
                   <div style={{ borderTop: '1px solid var(--border)' }} />
                   <button
                     onClick={() => { setOpenMenu(null); setDeleteTarget({ memberId: m.id, name: m.name, email: m.email ?? undefined }) }}
