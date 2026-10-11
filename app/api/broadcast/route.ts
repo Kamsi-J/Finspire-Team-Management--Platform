@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
 
   const { data: members } = await supabaseAdmin
     .from('team_members')
-    .select('whatsapp_number, telegram_chat_id')
+    .select('whatsapp_number, telegram_chat_id, preferred_platform')
     .eq('is_active', true)
     .eq('is_admin', false)
 
