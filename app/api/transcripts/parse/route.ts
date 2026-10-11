@@ -4,6 +4,8 @@ import { parseTranscript } from '@/lib/claude'
 import type { Transcript } from '@/types'
 
 export async function POST(req: NextRequest) {
+  let savedTranscriptId: string | null = null
+
   try {
     const body = await req.json()
     const { transcriptId, meeting_title, content } = body
@@ -46,6 +48,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing transcript content or transcriptId' }, { status: 400 })
     }
 
+    savedTranscriptId = transcript.id
+
     // Mark as processing
     await supabaseAdmin
       .from('transcripts')
@@ -60,6 +64,7 @@ export async function POST(req: NextRequest) {
 
     if (mErr || !members) {
       console.error('[Transcripts Parse API] Failed to fetch team members:', mErr)
+      await supabaseAdmin.from('transcripts').update({ status: 'uploaded' }).eq('id', transcript.id)
       return NextResponse.json({ error: 'Failed to fetch team members from database' }, { status: 500 })
     }
 
@@ -67,6 +72,7 @@ export async function POST(req: NextRequest) {
     const { tasks, error: parseError } = await parseTranscript(transcript.content, members)
 
     if (parseError && tasks.length === 0) {
+      await supabaseAdmin.from('transcripts').update({ status: 'uploaded' }).eq('id', transcript.id)
       return NextResponse.json({ error: parseError, transcript }, { status: 500 })
     }
 
@@ -80,6 +86,9 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal Server Error'
     console.error('[Transcripts Parse API Error]', err)
+    if (savedTranscriptId) {
+      await supabaseAdmin.from('transcripts').update({ status: 'uploaded' }).eq('id', savedTranscriptId).catch(() => {})
+    }
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
