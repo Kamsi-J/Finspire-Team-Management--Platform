@@ -29,7 +29,17 @@ export default function BroadcastPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message }),
     })
-    if (res.ok) { setMessage(''); fetchData() }
+    const result = await res.json()
+    if (res.ok) {
+      const { sent, total } = result
+      alert(sent === total
+        ? `Sent to all ${sent} members ✓`
+        : `Partial send: ${sent}/${total} delivered. Check Vercel logs for errors.`)
+      setMessage('')
+      fetchData()
+    } else {
+      alert(`Broadcast failed: ${result.error ?? 'Unknown error'}`)
+    }
     setSending(false)
   }
 
