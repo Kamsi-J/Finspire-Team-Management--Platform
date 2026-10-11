@@ -190,19 +190,19 @@ function buildTaskBoardText(
   const lines: string[] = [`Hi ${memberName}, here's your task board:`, '']
 
   if (active.length > 0) {
-    lines.push(`🟢 *YOUR TASKS*`)
+    lines.push(`🟢 YOUR TASKS`)
     active.forEach((t) => lines.push(`• ${t.title} — due ${t.due_date}`))
     lines.push('')
   }
 
   if (dueSoon.length > 0) {
-    lines.push(`⏰ *DUE SOON (within 24hrs)*`)
+    lines.push(`⏰ DUE SOON (within 24hrs)`)
     dueSoon.forEach((t) => lines.push(`• ${t.title} — due ${t.due_date}`))
     lines.push('')
   }
 
   if (overdue.length > 0) {
-    lines.push(`🔴 *OVERDUE*`)
+    lines.push(`🔴 OVERDUE`)
     overdue.forEach((t) => lines.push(`• ${t.title} — was due ${t.due_date}`))
     lines.push('')
   }
@@ -247,7 +247,7 @@ async function sendTgMessage(chatId: string, text: string) {
   const res = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' }),
+    body: JSON.stringify({ chat_id: chatId, text }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
