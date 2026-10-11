@@ -87,7 +87,9 @@ export async function POST(req: NextRequest) {
     const message = err instanceof Error ? err.message : 'Internal Server Error'
     console.error('[Transcripts Parse API Error]', err)
     if (savedTranscriptId) {
-      await supabaseAdmin.from('transcripts').update({ status: 'uploaded' }).eq('id', savedTranscriptId).catch(() => {})
+      try {
+        await supabaseAdmin.from('transcripts').update({ status: 'uploaded' }).eq('id', savedTranscriptId)
+      } catch { /* ignore reset failure */ }
     }
     return NextResponse.json({ error: message }, { status: 500 })
   }
